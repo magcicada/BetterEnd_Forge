@@ -137,6 +137,8 @@ tasks.matching { it.name == "runData" }.configureEach {
     finalizedBy(tasks.named("syncGeneratedResources"))
 }
 
+configurations.maybeCreate('distLibs')
+
 dependencies {
     minecraft "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}"
 
@@ -157,15 +159,16 @@ dependencies {
     if (local_bclib) {
         implementation project(path: ":BCLib", configuration: 'dev')
     } else {
-        implementation "org.betterx.bclib:bclib:${project.bclib_version}"
+        implementation fg.deobf("org.betterx:bclib:${project.bclib_version}")
+        distLibs "org.betterx:bclib:${project.bclib_version}"
     }
 
     println "Using local WunderLib: ${local_wunderlib}"
     if (local_wunderlib) {
         implementation project(path: ":WunderLib", configuration: 'dev')
     } else {
-        implementation "de.ambertation.wunderlib:wunderlib:${project.wunderlib_version}"
-        distLibs "de.ambertation.wunderlib:wunderlib:${project.wunderlib_version}"
+        implementation fg.deobf("de.ambertation:wunderlib:${project.wunderlib_version}")
+        distLibs "de.ambertation:wunderlib:${project.wunderlib_version}"
     }
 }
 
@@ -435,8 +438,8 @@ task nextVersion() {
 def distDir = new File(rootProject.projectDir.parentFile, "betterx-dist 1.20.1")
 def modrinthModsDir = new File("C:/Users/Redmi/AppData/Roaming/ModrinthApp/profiles/1.20.1 (1)/mods")
 def betterEndReobfJar = layout.buildDirectory.file("reobfJar/output.jar")
-def bclibReobfJar = project(":BCLib").layout.buildDirectory.file("reobfJar/output.jar")
-def wunderlibReobfJar = project(":WunderLib").layout.buildDirectory.file("reobfJar/output.jar")
+def bclibReobfJar = local_bclib ? project(":BCLib").layout.buildDirectory.file("reobfJar/output.jar") : null
+def wunderlibReobfJar = local_wunderlib ? project(":WunderLib").layout.buildDirectory.file("reobfJar/output.jar") : null
 tasks.register("copyDistJars", Copy) {
     dependsOn(tasks.named("reobfJar"))
     from(betterEndReobfJar) {
@@ -464,6 +467,7 @@ tasks.register("copyDistJars", Copy) {
 
 tasks.register("copyModrinthJars", Copy) {
     dependsOn(tasks.named("reobfJar"))
+    onlyIf { modrinthModsDir.parentFile.exists() }
     from(betterEndReobfJar) {
         rename { tasks.named("jar").get().archiveFileName.get() }
     }

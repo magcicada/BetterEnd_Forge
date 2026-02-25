@@ -172,21 +172,35 @@ dependencies {
     implementation fg.deobf("curse.maven:libipn-679177:5208511")
     runtimeOnly fg.deobf("curse.maven:kotlin-for-forge-351264:7291067")
 
-    println "Using local BCLib: ${local_bclib}"
-    if (local_bclib) {
-        implementation project(path: ":BCLib", configuration: 'dev')
+println "Using local BCLib: ${local_bclib}"
+if (local_bclib) {
+    implementation project(path: ":BCLib", configuration: 'dev')
+} else {
+    def bclibJar = file("libs/bclib-${project.bclib_version}.jar")
+    if (bclibJar.exists()) {
+        println "Found local JAR for BCLib: ${bclibJar.name}"
+        implementation fg.deobf(files(bclibJar))
     } else {
+        println "BCLib JAR not found in libs, attempting remote download."
         implementation fg.deobf("org.betterx:bclib:${project.bclib_version}")
-        distLibs "org.betterx:bclib:${project.bclib_version}"
     }
+    distLibs "org.betterx:bclib:${project.bclib_version}"
+}
 
-    println "Using local WunderLib: ${local_wunderlib}"
-    if (local_wunderlib) {
-        implementation project(path: ":WunderLib", configuration: 'dev')
+println "Using local WunderLib: ${local_wunderlib}"
+if (local_wunderlib) {
+    implementation project(path: ":WunderLib", configuration: 'dev')
+} else {
+    def wunderlibJar = file("libs/wunderlib-${project.wunderlib_version}.jar")
+    if (wunderlibJar.exists()) {
+        println "Found local JAR for WunderLib: ${wunderlibJar.name}"
+        implementation fg.deobf(files(wunderlibJar))
     } else {
+        println "WunderLib JAR not found in libs, attempting remote download."
         implementation fg.deobf("de.ambertation:wunderlib:${project.wunderlib_version}")
-        distLibs "de.ambertation:wunderlib:${project.wunderlib_version}"
     }
+    distLibs "de.ambertation:wunderlib:${project.wunderlib_version}"
+}
 }
 
 processResources {

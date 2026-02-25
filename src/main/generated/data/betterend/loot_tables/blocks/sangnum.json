@@ -15,10 +15,10 @@
                   "predicate": {
                     "enchantments": [
                       {
-                        "enchantment": "minecraft:silk_touch",
                         "levels": {
                           "min": 1
-                        }
+                        },
+                        "enchantment": "minecraft:silk_touch"
                       }
                     ]
                   }
@@ -28,6 +28,16 @@
             },
             {
               "type": "minecraft:item",
+              "functions": [
+                {
+                  "add": false,
+                  "count": 1.0,
+                  "function": "minecraft:set_count"
+                },
+                {
+                  "function": "minecraft:explosion_decay"
+                }
+              ],
               "name": "minecraft:end_stone"
             }
           ]

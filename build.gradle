@@ -182,9 +182,9 @@ if (local_bclib) {
         implementation fg.deobf(files(bclibJar))
     } else {
         println "BCLib JAR not found in libs, attempting remote download."
-        implementation fg.deobf("org.betterx:bclib:${project.bclib_version}")
+        implementation fg.deobf("curse.maven:bclib-forge-1435106:7654257")
     }
-    distLibs "org.betterx:bclib:${project.bclib_version}"
+    distLibs "curse.maven:bclib-forge-1435106:7654257"
 }
 
 println "Using local WunderLib: ${local_wunderlib}"
@@ -197,9 +197,9 @@ if (local_wunderlib) {
         implementation fg.deobf(files(wunderlibJar))
     } else {
         println "WunderLib JAR not found in libs, attempting remote download."
-        implementation fg.deobf("de.ambertation:wunderlib:${project.wunderlib_version}")
+        implementation fg.deobf("curse.maven:wunderlib-forge-1435097:7486522")
     }
-    distLibs "de.ambertation:wunderlib:${project.wunderlib_version}"
+    distLibs "curse.maven:wunderlib-forge-1435097:7486522"
 }
 }
 

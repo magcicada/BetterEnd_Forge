@@ -179,7 +179,6 @@ if (local_bclib) {
         implementation fg.deobf("curse.maven:bclib-forge-1435106:7654257")
     }
     distLibs "curse.maven:bclib-forge-1435106:7654257"
-}
 
 println "Using local WunderLib: ${local_wunderlib}"
 if (local_wunderlib) {
@@ -188,8 +187,6 @@ if (local_wunderlib) {
         implementation fg.deobf("curse.maven:wunderlib-forge-1435097:7486522")
     }
     distLibs "curse.maven:wunderlib-forge-1435097:7486522"
-}
-}
 
 processResources {
     println "Version: ${project.mod_version}"

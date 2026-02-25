@@ -176,7 +176,7 @@ println "Using local BCLib: ${local_bclib}"
 if (local_bclib) {
     implementation project(path: ":BCLib", configuration: 'dev')
 } else {
-    def bclibJar = file("libs/bclib-${project.bclib_version}.jar")
+    def bclibJar = file("libs/BCLib-${project.bclib_version}.jar")
     if (bclibJar.exists()) {
         println "Found local JAR for BCLib: ${bclibJar.name}"
         implementation fg.deobf(files(bclibJar))
@@ -191,7 +191,7 @@ println "Using local WunderLib: ${local_wunderlib}"
 if (local_wunderlib) {
     implementation project(path: ":WunderLib", configuration: 'dev')
 } else {
-    def wunderlibJar = file("libs/wunderlib-${project.wunderlib_version}.jar")
+    def wunderlibJar = file("libs/WunderLib-${project.wunderlib_version}.jar")
     if (wunderlibJar.exists()) {
         println "Found local JAR for WunderLib: ${wunderlibJar.name}"
         implementation fg.deobf(files(wunderlibJar))

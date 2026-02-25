@@ -32,13 +32,11 @@ public class JEIAlloyingCategory implements IRecipeCategory<AlloyingDisplay> {
     private static final DecimalFormat DF = new DecimalFormat("###.##");
 
     public JEIAlloyingCategory(IGuiHelper guiHelper) {
-        // 背景切片：保持核心区域 (26, 12, 124, 62)
         this.background = guiHelper.createDrawable(GUI_TEXTURE, 26, 12, 124, 62);
 
         this.icon = guiHelper.createDrawableIngredient(VanillaTypes.ITEM_STACK, new ItemStack(EndBlocks.END_STONE_SMELTER));
         this.title = Component.translatable("betterend.jei.container.alloying");
 
-        // 动画贴图资产
         this.fire = guiHelper.drawableBuilder(GUI_TEXTURE, 177, 0, 14, 14)
                 .buildAnimated(200, IDrawableAnimated.StartDirection.TOP, true);
 

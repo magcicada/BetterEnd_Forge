@@ -67,4 +67,3 @@ public class MossyObsidian extends BaseBlock implements BehaviourObsidian {
         }
     }
 }
-

@@ -132,4 +132,3 @@ public class EndLilyBlock extends EndUnderwaterPlantBlock implements BehaviourWa
         return SurvivesOnEndStone.super.isTerrain(state);
     }
 }
-

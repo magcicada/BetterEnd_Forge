@@ -131,4 +131,3 @@ public class ColoredMaterial {
         return baseName;
     }
 }
-

@@ -81,4 +81,3 @@ public class TenaneaFlowersBlock extends BaseVineBlock implements CustomColorPro
         };
     }
 }
-

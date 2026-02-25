@@ -131,4 +131,3 @@ public class SmallJellyshroomBlock extends BaseAttachedBlock implements RenderLa
         return "facing=up";
     }
 }
-

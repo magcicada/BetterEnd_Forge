@@ -28,4 +28,3 @@ public class EnderBlock extends BaseBlock.Stone {
         return 0xFF005548;
     }
 }
-

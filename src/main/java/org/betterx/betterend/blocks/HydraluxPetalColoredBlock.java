@@ -41,5 +41,3 @@ public class HydraluxPetalColoredBlock extends HydraluxPetalBlock implements Cus
         return ModelsHelper.fromPattern(pattern);
     }
 }
-
-

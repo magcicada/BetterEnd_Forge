@@ -436,5 +436,3 @@ public class NeonCactusPlantBlock extends BaseBlockNotFull implements SimpleWate
         return "bottom=moss,shape=top,facing=up";
     }
 }
-
-

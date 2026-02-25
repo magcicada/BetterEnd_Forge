@@ -59,4 +59,3 @@ public class EndLotusFlowerBlock extends EndPlantBlock implements BehaviourPlant
         return new ItemStack(EndBlocks.END_LOTUS_SEED);
     }
 }
-

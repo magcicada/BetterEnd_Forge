@@ -474,5 +474,3 @@ public class FlowerPotBlock extends BaseBlockNotFull implements RenderLayerProvi
         SHAPE_FULL = Shapes.or(SHAPE_EMPTY, Block.box(3, 8, 3, 13, 16, 13));
     }
 }
-
-

@@ -196,4 +196,3 @@ public class SilkMothNestBlock extends BaseBlock implements RenderLayerProvider,
         return InteractionResult.FAIL;
     }
 }
-

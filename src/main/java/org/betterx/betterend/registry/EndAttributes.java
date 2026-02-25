@@ -38,5 +38,3 @@ public class EndAttributes {
         return builder.add(EndAttributes.BLINDNESS_RESISTANCE);
     }
 }
-
-

@@ -11,4 +11,3 @@ public class NeonCactusBlock extends LitPillarBlock {
         super(BlockBehaviour.Properties.copy(Blocks.CACTUS).lightLevel((bs) -> 15));
     }
 }
-

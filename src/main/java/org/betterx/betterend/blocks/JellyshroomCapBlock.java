@@ -105,5 +105,3 @@ public class JellyshroomCapBlock extends SlimeBlock implements RenderLayerProvid
         };
     }
 }
-
-

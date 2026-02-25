@@ -46,4 +46,3 @@ public class EndstoneDustBlock extends FallingBlock implements TagProvider, Beha
         blockTags.add(CommonBlockTags.END_STONES);
     }
 }
-

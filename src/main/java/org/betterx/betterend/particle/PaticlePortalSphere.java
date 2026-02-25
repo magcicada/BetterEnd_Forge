@@ -85,4 +85,3 @@ public class PaticlePortalSphere extends SimpleAnimatedParticle {
         }
     }
 }
-

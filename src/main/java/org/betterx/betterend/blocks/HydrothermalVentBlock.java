@@ -159,4 +159,3 @@ public class HydrothermalVentBlock extends BaseBlockNotFull.Stone implements Ent
         return BlockEntityHydrothermalVent::tick;
     }
 }
-

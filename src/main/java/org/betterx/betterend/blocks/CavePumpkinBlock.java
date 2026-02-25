@@ -70,4 +70,3 @@ public class CavePumpkinBlock extends BaseBlockNotFull implements RenderLayerPro
         SHAPE_SMALL = Shapes.or(lantern, cap, top);
     }
 }
-

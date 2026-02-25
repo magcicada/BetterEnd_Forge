@@ -23,4 +23,3 @@ public class LitPillarBlock extends BaseRotatedPillarBlock {
         return Optional.of(PATTERN.replace("name", name));
     }
 }
-

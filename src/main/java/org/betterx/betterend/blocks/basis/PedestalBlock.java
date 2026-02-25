@@ -471,12 +471,10 @@ public class PedestalBlock extends BaseBlockNotFull implements EntityBlock, TagP
     public void addTags(List<TagKey<Block>> blockTags, List<TagKey<Item>> itemTags) {
         blockTags.add(EndTags.PEDESTALS);
     }
-	
-	/*@Override
-	@Nullable
-	public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState blockState, BlockEntityType<T> blockEntityType) {
-		return level.isClientSide() ? PedestalBlockEntity::tick : null;
-	}*/
+
+    /*@Override
+    @Nullable
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState blockState, BlockEntityType<T> blockEntityType) {
+        return level.isClientSide() ? PedestalBlockEntity::tick : null;
+    }*/
 }
-
-

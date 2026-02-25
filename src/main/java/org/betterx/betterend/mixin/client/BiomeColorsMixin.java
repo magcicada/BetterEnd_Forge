@@ -5,7 +5,6 @@ import org.betterx.betterend.client.ClientOptions;
 import org.betterx.betterend.registry.EndBlocks;
 import org.betterx.ui.ColorUtil;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.BiomeColors;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.BlockPos.MutableBlockPos;

@@ -18,4 +18,3 @@ public class CharcoalBlock extends BaseBlock implements Fuel, BehaviourStone {
         return 16000;
     }
 }
-

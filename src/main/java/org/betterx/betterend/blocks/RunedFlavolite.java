@@ -55,4 +55,3 @@ public class RunedFlavolite extends BaseBlock.Stone {
         return super.getDrops(state, builder);
     }
 }
-

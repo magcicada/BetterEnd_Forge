@@ -45,4 +45,3 @@ public class ShadowGrassBlock extends EndTerrainBlock implements TagProvider {
         blockTags.add(CommonBlockTags.END_STONES);
     }
 }
-

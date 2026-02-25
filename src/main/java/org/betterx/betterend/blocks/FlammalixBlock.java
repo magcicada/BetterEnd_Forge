@@ -42,4 +42,3 @@ public class FlammalixBlock extends EndPlantBlock implements BehaviourPlant, Sur
         return SurvicesOnPallidium.super.isTerrain(state);
     }
 }
-

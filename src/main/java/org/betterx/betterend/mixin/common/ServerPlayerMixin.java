@@ -25,7 +25,7 @@ public abstract class ServerPlayerMixin extends Player {
     public ServerPlayerMixin(Level level, BlockPos blockPos, float f, GameProfile gameProfile) {
         super(level, blockPos, f, gameProfile);
     }
-    
+
     @Inject(method = "createEndPlatform", at = @At("HEAD"), cancellable = true)
     private void be_createEndSpawnPlatform(ServerLevel world, BlockPos centerPos, CallbackInfo info) {
         if (!GeneratorOptions.generateObsidianPlatform()) {

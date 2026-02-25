@@ -116,5 +116,3 @@ public class EndPortalBlock extends NetherPortalBlock implements RenderLayerProv
         return (stack, tintIndex) -> EndPortals.getColor(0);
     }
 }
-
-

@@ -168,5 +168,3 @@ public class VentBubbleColumnBlock extends Block implements BucketPickup, Liquid
         return Fluids.WATER.getPickupSound();
     }
 }
-
-

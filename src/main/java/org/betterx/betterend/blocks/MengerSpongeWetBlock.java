@@ -128,5 +128,3 @@ public class MengerSpongeWetBlock extends BaseBlockNotFull implements RenderLaye
         return EndBlocks.MENGER_SPONGE.getShape(blockState, blockGetter, blockPos, collisionContext);
     }
 }
-
-

@@ -139,4 +139,3 @@ public class EndHammerItem extends DiggerItem implements ItemModelProvider, TagP
         itemTags.add(CommonItemTags.HAMMERS);
     }
 }
-

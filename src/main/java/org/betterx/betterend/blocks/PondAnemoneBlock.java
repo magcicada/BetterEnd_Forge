@@ -62,4 +62,3 @@ public class PondAnemoneBlock extends EndUnderwaterPlantBlock implements Behavio
         return SurvivesOnEndStone.super.isTerrain(state);
     }
 }
-

@@ -3,15 +3,6 @@
   "pools": [
     {
       "bonus_rolls": 0.0,
-      "conditions": [
-        {
-          "block": "betterend:pythadendron_chair",
-          "condition": "minecraft:block_state_property",
-          "properties": {
-            "top": "false"
-          }
-        }
-      ],
       "entries": [
         {
           "type": "minecraft:item",

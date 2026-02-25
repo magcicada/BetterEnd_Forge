@@ -113,4 +113,3 @@ public class ArmoredElytra extends BaseArmorItem implements MultiModelItem, Bett
         );
     }
 }
-

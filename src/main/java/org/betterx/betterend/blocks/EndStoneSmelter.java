@@ -183,4 +183,3 @@ public class EndStoneSmelter extends BaseBlockWithEntity.Stone implements Alloyi
         );
     }
 }
-

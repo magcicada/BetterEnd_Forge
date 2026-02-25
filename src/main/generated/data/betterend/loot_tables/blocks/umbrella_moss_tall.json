@@ -5,24 +5,52 @@
       "bonus_rolls": 0.0,
       "conditions": [
         {
-          "condition": "minecraft:match_tool",
-          "predicate": {
-            "items": [
-              "minecraft:shears"
-            ]
-          }
+          "condition": "minecraft:any_of",
+          "terms": [
+            {
+              "condition": "minecraft:any_of",
+              "terms": [
+                {
+                  "condition": "minecraft:match_tool",
+                  "predicate": {
+                    "items": [
+                      "minecraft:shears"
+                    ]
+                  }
+                },
+                {
+                  "condition": "minecraft:match_tool",
+                  "predicate": {
+                    "tag": "c:shears"
+                  }
+                },
+                {
+                  "condition": "minecraft:match_tool",
+                  "predicate": {
+                    "tag": "fabric:shears"
+                  }
+                }
+              ]
+            },
+            {
+              "condition": "minecraft:match_tool",
+              "predicate": {
+                "enchantments": [
+                  {
+                    "enchantment": "minecraft:silk_touch",
+                    "levels": {
+                      "min": 1
+                    }
+                  }
+                ]
+              }
+            }
+          ]
         }
       ],
       "entries": [
         {
           "type": "minecraft:item",
-          "functions": [
-            {
-              "add": false,
-              "count": 2.0,
-              "function": "minecraft:set_count"
-            }
-          ],
           "name": "betterend:umbrella_moss_tall"
         }
       ],

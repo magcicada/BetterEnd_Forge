@@ -2,7 +2,8 @@ buildscript {
     def enablePublishing = project.hasProperty("publishMods") || System.getenv("PUBLISH_MODS") == "true"
     if (enablePublishing) {
         repositories {
-            maven { url "https://plugins.gradle.org/m2/" }
+            maven { url "https://plugins.gradle.org/m2/"
+            }
         }
         dependencies {
             classpath "com.modrinth.minotaur:Minotaur:2.+"
@@ -24,7 +25,7 @@ plugins {
 
 spotless {
     java {
-        target 'src/*/java/**/*.java'
+        target 'src /*/java/**/*.java'
         targetExclude 'src/main/generated/**'
         trimTrailingWhitespace()
         endWithNewline()
@@ -172,21 +173,22 @@ dependencies {
     implementation fg.deobf("curse.maven:libipn-679177:5208511")
     runtimeOnly fg.deobf("curse.maven:kotlin-for-forge-351264:7291067")
 
-println "Using local BCLib: ${local_bclib}"
-if (local_bclib) {
-    implementation project(path: ":BCLib", configuration: 'dev')
-} else {
-        implementation fg.deobf("curse.maven:bclib-forge-1435106:7654257")
-    }
+    println "Using local BCLib: ${local_bclib}"
+    if (local_bclib) {
+        implementation project(path: ":BCLib", configuration: 'dev')
+        } else {
+            implementation fg.deobf("curse.maven:bclib-forge-1435106:7654257")
+        }
     distLibs "curse.maven:bclib-forge-1435106:7654257"
 
-println "Using local WunderLib: ${local_wunderlib}"
-if (local_wunderlib) {
-    implementation project(path: ":WunderLib", configuration: 'dev')
-} else {
+    println "Using local WunderLib: ${local_wunderlib}"
+    if (local_wunderlib) {
+        implementation project(path: ":WunderLib", configuration: 'dev')
+    } else {
         implementation fg.deobf("curse.maven:wunderlib-forge-1435097:7486522")
     }
     distLibs "curse.maven:wunderlib-forge-1435097:7486522"
+}
 
 processResources {
     println "Version: ${project.mod_version}"

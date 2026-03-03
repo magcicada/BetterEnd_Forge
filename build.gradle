@@ -137,8 +137,6 @@ tasks.matching { it.name == "runData" }.configureEach {
     finalizedBy(tasks.named("syncGeneratedResources"))
 }
 
-configurations.maybeCreate('distLibs')
-
 dependencies {
     minecraft "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}"
 

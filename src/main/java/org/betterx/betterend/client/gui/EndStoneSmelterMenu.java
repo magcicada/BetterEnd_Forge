@@ -19,9 +19,6 @@ import net.minecraft.world.level.Level;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
-import org.anti_ad.mc.ipn.api.IPNIgnore;
-
-@IPNIgnore
 public class EndStoneSmelterMenu extends RecipeBookMenu<Container> {
     public static final int INGREDIENT_SLOT_A = 0;
     public static final int INGREDIENT_SLOT_B = 1;

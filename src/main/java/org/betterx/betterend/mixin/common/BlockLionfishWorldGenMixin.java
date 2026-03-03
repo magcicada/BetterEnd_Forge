@@ -1,6 +1,7 @@
 package org.betterx.betterend.mixin.common;
 
 import net.minecraft.server.MinecraftServer;
+
 import org.betterx.betterend.world.generator.GeneratorOptions;
 
 import org.slf4j.Logger;
@@ -17,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class BlockLionfishWorldGenMixin {
     @Unique private static final Logger BE_LOGGER = LogUtils.getLogger();
 
-    @Inject(method = "onServerAboutToStart", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "onServerAboutToStart", at = @At("HEAD"), cancellable = true, require = 0, remap = false)
     private static void blockBiomeSlices(MinecraftServer server, CallbackInfo ci) {
         if (GeneratorOptions.blockLionfishAPI()) {
             BE_LOGGER.info("[BetterEnd] Stopping Lionfish API's biome system from breaking custom end terrain gen.");

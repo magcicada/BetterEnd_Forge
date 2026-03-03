@@ -20,6 +20,7 @@ import org.betterx.betterend.registry.EndBlocks;
 import org.jetbrains.annotations.NotNull;
 
 import java.text.DecimalFormat;
+import java.util.List;
 
 public class JEIAlloyingCategory implements IRecipeCategory<AlloyingDisplay> {
     private static final ResourceLocation GUI_TEXTURE = new ResourceLocation(BetterEnd.MOD_ID, "textures/gui/smelter_gui.png");
@@ -46,7 +47,7 @@ public class JEIAlloyingCategory implements IRecipeCategory<AlloyingDisplay> {
 
     @Override
     public @NotNull RecipeType<AlloyingDisplay> getRecipeType() {
-        return (RecipeType) JEIPlugin.ALLOYING_RECIPE_TYPE;
+        return JEIPlugin.ALLOYING_RECIPE_TYPE;
     }
 
     @Override
@@ -74,8 +75,9 @@ public class JEIAlloyingCategory implements IRecipeCategory<AlloyingDisplay> {
                     .addIngredients(display.recipe.getIngredients().get(1));
         }
 
+        List<ItemStack> fuels = JEIPlugin.ALLOYING_FUELS.isEmpty() ? List.of() : JEIPlugin.ALLOYING_FUELS;
         builder.addSlot(RecipeIngredientRole.RENDER_ONLY, 30, 41)
-                .addItemStacks(JEIPlugin.ALLOYING_FUELS);
+                .addItemStacks(fuels);
 
         if (Minecraft.getInstance().level != null) {
             builder.addSlot(RecipeIngredientRole.OUTPUT, 103, 23)

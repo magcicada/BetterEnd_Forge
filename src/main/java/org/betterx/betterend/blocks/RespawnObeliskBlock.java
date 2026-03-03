@@ -219,4 +219,3 @@ public class RespawnObeliskBlock extends BaseBlock.Stone implements CustomColorP
         return player.isCreative() ? InteractionResult.PASS : InteractionResult.sidedSuccess(world.isClientSide);
     }
 }
-

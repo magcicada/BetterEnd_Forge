@@ -8,4 +8,3 @@ public class ElytraClient {
     public static void register() {
     }
 }
-

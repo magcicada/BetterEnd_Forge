@@ -118,5 +118,3 @@ public class ChandelierBlock extends BaseAttachedBlock.Metal implements RenderLa
         BOUNDING_SHAPES.put(Direction.EAST, Shapes.box(0.0, 0.0, 0.0, 0.5, 1.0, 1.0));
     }
 }
-
-

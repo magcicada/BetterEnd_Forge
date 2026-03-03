@@ -81,4 +81,3 @@ public class EndLotusLeafBlock extends BaseBlockNotFull implements RenderLayerPr
         return new ItemStack(EndBlocks.END_LOTUS_SEED);
     }
 }
-

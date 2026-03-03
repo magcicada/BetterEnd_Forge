@@ -111,4 +111,3 @@ public class EndLotusStemBlock extends BaseBlock implements SimpleWaterloggedBlo
         SHAPES.put(Axis.Z, Block.box(6, 6, 0, 10, 10, 16));
     }
 }
-

@@ -796,8 +796,6 @@
   "block.betterend.virid_jadestone_wall": "Virid Jadestone Wall",
   "book.betterend.landing": "A short guide about surviving in the extreme conditions of The End.",
   "book.betterend.subtitle": "Survive in The End",
-  "category.rei.damage.amount&dmg": "Tool damage: %s",
-  "category.rei.infusion.time&val": "Time: %s",
   "effect.betterend.end_veil": "End Veil",
   "emi.category.betterend.infusion": "Infusion Ritual",
   "enchantment.betterend.end_veil": "End Veil",
@@ -1112,5 +1110,13 @@
   "title.config.betterend.generator.structure.has_portal": "Generate Portal",
   "title.config.betterend.generator.structure.replace_pillars": "Use BetterEnd-Style Pillars",
   "title.config.betterend.generator.structure.replace_portal": "Use BetterEnd-Style Portal",
-  "title.config.group.betterend.generator": "End Generator"
+  "title.config.group.betterend.generator": "End Generator",
+
+  "betterend.jei.container.anvil": "Anvil Recipes",
+  "betterend.jei.damage.amount&dmg": "Tool damage: %s",
+  "betterend.jei.recipe_level.anvil": "Lvl: %s",
+  "betterend.jei.infusion.time&val": "%s ticks",
+  "betterend.jei.container.infusion": "Infusion Recipes",
+  "betterend.jei.alloying.experience_time": "%s XP | %s s",
+  "betterend.jei.container.alloying": "Alloying and Blasting"
 }

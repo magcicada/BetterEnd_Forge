@@ -38,4 +38,3 @@ public class BulbVineLanternColoredBlock extends BulbVineLanternBlock implements
         return "bulb_vine_lantern_overlay";
     }
 }
-

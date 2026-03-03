@@ -37,4 +37,3 @@ public class CrystaliteChestplate extends CrystaliteArmor implements MobEffectAp
         lines.add(2, CHEST_DESC);
     }
 }
-

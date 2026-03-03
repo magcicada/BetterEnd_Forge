@@ -200,4 +200,3 @@ public class EndStoneSmelterMenu extends RecipeBookMenu<Container> {
         return propertyDelegate.get(0) > 0;
     }
 }
-

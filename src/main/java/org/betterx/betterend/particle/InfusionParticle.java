@@ -76,4 +76,3 @@ public class InfusionParticle extends TextureSheetParticle {
         }
     }
 }
-

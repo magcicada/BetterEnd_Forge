@@ -138,4 +138,3 @@ public class MengerSpongeBlock extends BaseBlockNotFull implements RenderLayerPr
                 ));
     }
 }
-

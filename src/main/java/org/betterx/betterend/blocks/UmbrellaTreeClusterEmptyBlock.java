@@ -45,4 +45,3 @@ public class UmbrellaTreeClusterEmptyBlock extends BaseBlock {
         }
     }
 }
-

@@ -35,4 +35,3 @@ public class EnchantedItem extends ModelProviderItem {
         return ModelsHelper.createItemModel(sourceId);
     }
 }
-

@@ -52,4 +52,3 @@ public class UmbrellaMossBlock extends EndPlantBlock implements BehaviourPlant, 
         return SurvivesOnJungleMossOrMycelium.super.isTerrain(state);
     }
 }
-

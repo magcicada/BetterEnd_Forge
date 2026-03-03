@@ -76,4 +76,3 @@ public class PallidiumBlock extends EndTerrainBlock {
         return this.getBlockModel(stateId, blockState);
     }
 }
-

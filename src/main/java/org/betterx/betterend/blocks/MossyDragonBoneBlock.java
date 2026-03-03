@@ -68,4 +68,3 @@ public class MossyDragonBoneBlock extends BaseRotatedPillarBlock implements Beha
         }
     }
 }
-

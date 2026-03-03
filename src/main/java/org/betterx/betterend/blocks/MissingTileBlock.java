@@ -12,4 +12,3 @@ public class MissingTileBlock extends BaseBlock implements BehaviourStone {
         super(BlockBehaviour.Properties.copy(Blocks.END_STONE));
     }
 }
-

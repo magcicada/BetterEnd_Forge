@@ -62,5 +62,3 @@ public class StoneLanternBlock extends EndLanternBlock implements CustomColorPro
         return ModelsHelper.fromPattern(pattern);
     }
 }
-
-

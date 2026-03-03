@@ -56,4 +56,3 @@ public class MurkweedBlock extends EndPlantBlock implements SurvivesOnShadowGras
         return SurvivesOnShadowGrass.super.isTerrain(state);
     }
 }
-

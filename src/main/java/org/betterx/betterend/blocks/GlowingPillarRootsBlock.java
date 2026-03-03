@@ -35,4 +35,3 @@ public class GlowingPillarRootsBlock extends UpDownPlantBlock {
         return new ItemStack(EndBlocks.GLOWING_PILLAR_SEED);
     }
 }
-

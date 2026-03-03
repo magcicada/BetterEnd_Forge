@@ -263,4 +263,3 @@ public class EternalPedestal extends PedestalBlock implements BehaviourStone {
         dispatchParticles(level, blockPos, randomSource);
     }
 }
-

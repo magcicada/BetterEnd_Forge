@@ -115,4 +115,3 @@ public class LumecornBlock extends BaseBlockNotFull.Wood implements RenderLayerP
         return new ItemStack(EndItems.LUMECORN_ROD);
     }
 }
-

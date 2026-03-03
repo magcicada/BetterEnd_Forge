@@ -100,5 +100,3 @@ public class EmeraldIceBlock extends HalfTransparentBlock implements RenderLayer
         return getBlockModel(resourceLocation, defaultBlockState());
     }
 }
-
-

@@ -72,4 +72,3 @@ public class CrystaliteHelmetModel extends HumanoidModel<LivingEntity> {
         return Lists.newArrayList(myHat);
     }
 }
-

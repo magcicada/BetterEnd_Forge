@@ -86,4 +86,3 @@ public class InfusionParticleType extends ParticleType<InfusionParticleType> imp
         return CODEC;
     }
 }
-

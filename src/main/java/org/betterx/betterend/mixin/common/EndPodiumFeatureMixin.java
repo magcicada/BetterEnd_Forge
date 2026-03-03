@@ -78,13 +78,13 @@ public class EndPodiumFeatureMixin {
         be_portalPosition = NbtUtils.readBlockPos(compound);
 
         if (be_portalPosition.getY() == 0) {
-			/*if (GeneratorOptions.useNewGenerator()) {
-				int y = TerrainGenerator.getHeight(0, 0, world.getLevel().getChunkSource().getGenerator().getBiomeSource());
-				be_portalPosition = new BlockPos(0, y, 0);
-			}
-			else {
-				be_portalPosition = new BlockPos(0, 65, 0);
-			}*/
+            /*if (GeneratorOptions.useNewGenerator()) {
+                int y = TerrainGenerator.getHeight(0, 0, world.getLevel().getChunkSource().getGenerator().getBiomeSource());
+                be_portalPosition = new BlockPos(0, y, 0);
+            }
+            else {
+                be_portalPosition = new BlockPos(0, 65, 0);
+            }*/
             int y = world.getHeight(Types.WORLD_SURFACE, 0, 0);
             be_portalPosition = new BlockPos(0, y, 0);
             WorldConfig.getRootTag(BetterEnd.MOD_ID).put("portal", NbtUtils.writeBlockPos(be_portalPosition));

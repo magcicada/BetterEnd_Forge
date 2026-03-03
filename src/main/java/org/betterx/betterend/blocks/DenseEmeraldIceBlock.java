@@ -38,4 +38,3 @@ public class DenseEmeraldIceBlock extends BaseBlock implements RenderLayerProvid
         }
     }
 }
-

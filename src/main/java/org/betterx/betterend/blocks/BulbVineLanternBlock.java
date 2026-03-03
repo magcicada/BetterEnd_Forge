@@ -82,4 +82,3 @@ public class BulbVineLanternBlock extends EndLanternBlock implements RenderLayer
     }
 
 }
-

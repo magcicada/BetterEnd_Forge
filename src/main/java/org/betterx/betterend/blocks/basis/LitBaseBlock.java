@@ -25,4 +25,3 @@ public class LitBaseBlock extends BaseBlock {
         return BlockModel.fromString(PATTERN.replace("name", resourceLocation.getPath()));
     }
 }
-

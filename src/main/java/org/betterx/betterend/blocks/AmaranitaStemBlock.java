@@ -12,4 +12,3 @@ public class AmaranitaStemBlock extends BaseRotatedPillarBlock {
         super(BlockBehaviour.Properties.copy(Blocks.OAK_PLANKS).mapColor(MapColor.COLOR_LIGHT_GREEN));
     }
 }
-

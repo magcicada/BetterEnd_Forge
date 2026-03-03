@@ -79,4 +79,3 @@ public class UmbrellaTreeClusterBlock extends BaseBlock.Wood {
         return InteractionResult.FAIL;
     }
 }
-

@@ -383,4 +383,3 @@ public class InfusionRecipe implements Recipe<InfusionRitual>, UnknownReceipBook
         //we call this to make sure that TYPE is initialized
     }
 }
-

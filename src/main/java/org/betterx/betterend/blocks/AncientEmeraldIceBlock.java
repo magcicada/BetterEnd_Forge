@@ -88,4 +88,3 @@ public class AncientEmeraldIceBlock extends BaseBlock implements BehaviourIce {
         entity.setIsInPowderSnow(true);
     }
 }
-

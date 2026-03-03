@@ -75,4 +75,3 @@ public class RitualUpdate extends DataHandler.FromServer {
         );
     }
 }
-

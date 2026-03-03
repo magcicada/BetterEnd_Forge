@@ -98,4 +98,3 @@ public class HydraluxBlock extends UnderwaterPlantBlock implements BehaviourWate
         return Collections.emptyList();
     }
 }
-

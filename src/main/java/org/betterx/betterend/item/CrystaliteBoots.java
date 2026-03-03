@@ -39,4 +39,3 @@ public class CrystaliteBoots extends CrystaliteArmor implements MobEffectApplier
         lines.add(2, BOOTS_DESC);
     }
 }
-

@@ -106,4 +106,3 @@ public class PedestalItemRenderer<T extends PedestalBlockEntity> implements Bloc
         return (int) (Minecraft.getInstance().level.getGameTime() % 314);
     }
 }
-

@@ -13,4 +13,3 @@ public class AmberBlock extends BaseBlock implements BehaviourStone {
         super(BlockBehaviour.Properties.copy(Blocks.DIAMOND_BLOCK).mapColor(MapColor.COLOR_YELLOW));
     }
 }
-

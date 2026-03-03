@@ -138,5 +138,3 @@ public class EndLanternBlock extends BaseBlockNotFull.Wood implements SimpleWate
         return ModelsHelper.createBlockSimple(modelId);
     }
 }
-
-

@@ -91,5 +91,3 @@ public class UmbrellaTreeMembraneBlock extends SlimeBlock implements RenderLayer
         return getBlockModel(resourceLocation, defaultBlockState());
     }
 }
-
-

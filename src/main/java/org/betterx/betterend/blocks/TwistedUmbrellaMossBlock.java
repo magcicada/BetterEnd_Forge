@@ -53,4 +53,3 @@ public class TwistedUmbrellaMossBlock extends EndPlantBlock implements Behaviour
         return SurvivesOnJungleMossOrMycelium.super.isTerrain(state);
     }
 }
-

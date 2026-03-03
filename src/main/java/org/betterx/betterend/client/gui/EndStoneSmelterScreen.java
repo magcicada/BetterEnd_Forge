@@ -148,4 +148,3 @@ public class EndStoneSmelterScreen extends AbstractContainerScreen<EndStoneSmelt
         guiGraphics.blit(BACKGROUND_TEXTURE, leftPos + 92, topPos + 34, 176, 14, progress + 1, 16);
     }
 }
-

@@ -106,4 +106,3 @@ public class BrimstoneBlock extends BaseBlock.Stone {
         }
     }
 }
-

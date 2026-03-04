@@ -171,8 +171,7 @@ dependencies {
         implementation project(path: ":BCLib", configuration: 'dev')
         } else {
             implementation fg.deobf("curse.maven:bclib-forge-1435106:7654257")
-        }
-    distLibs "curse.maven:bclib-forge-1435106:7654257"
+    }
 
     println "Using local WunderLib: ${local_wunderlib}"
     if (local_wunderlib) {
@@ -180,7 +179,6 @@ dependencies {
     } else {
         implementation fg.deobf("curse.maven:wunderlib-forge-1435097:7486522")
     }
-    distLibs "curse.maven:wunderlib-forge-1435097:7486522"
 }
 
 processResources {

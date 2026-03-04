@@ -62,6 +62,7 @@ repositories {
     maven { url 'https://maven.terraformersmc.com' }
     maven { url 'https://maven.ambertation.de/releases' }
     maven { url 'https://repo.spongepowered.org/repository/maven-public/' }
+    maven { url 'https://cursemaven.com' }
     flatDir { dirs 'libs' }
 }
 

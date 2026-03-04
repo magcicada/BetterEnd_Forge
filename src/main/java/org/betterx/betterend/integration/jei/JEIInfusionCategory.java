@@ -71,8 +71,11 @@ public class JEIInfusionCategory implements IRecipeCategory<InfusionDisplay> {
         if (inputs.size() > 7) builder.addSlot(RecipeIngredientRole.INPUT, cx - 20, cy + 12).addIngredients(inputs.get(7));
         if (inputs.size() > 8) builder.addSlot(RecipeIngredientRole.INPUT, cx - 16, cy - 12).addIngredients(inputs.get(8));
 
-        builder.addSlot(RecipeIngredientRole.OUTPUT, cx + 88, cy + 12)
-                .addItemStack(display.recipe.getResultItem(Minecraft.getInstance().level.registryAccess()));
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level != null) {
+            builder.addSlot(RecipeIngredientRole.OUTPUT, cx + 88, cy + 12)
+                    .addItemStack(display.recipe.getResultItem(minecraft.level.registryAccess()));
+        }
     }
 
     @Override

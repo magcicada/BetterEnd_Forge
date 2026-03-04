@@ -1,6 +1,7 @@
 package org.betterx.betterend.registry;
 
 import org.betterx.bclib.api.v2.ComposterAPI;
+import org.betterx.bclib.api.v3.tag.BCLBlockTags;
 import org.betterx.betterend.BetterEnd;
 import org.betterx.betterend.item.tool.EndHammerItem;
 import org.betterx.betterend.world.biome.EndBiome;
@@ -94,6 +95,28 @@ public class EndTags {
         TagManager.ITEMS.add(ALLOYING_COPPER, Items.COPPER_ORE, Items.DEEPSLATE_COPPER_ORE, Items.RAW_COPPER);
 
         TagManager.ITEMS.add(ItemTags.FISHES, EndItems.END_FISH_RAW, EndItems.END_FISH_COOKED);
+
+        // Register bonemeal source/target tags after block registration is complete.
+        TagManager.BLOCKS.add(
+                BCLBlockTags.BONEMEAL_SOURCE_END_STONE,
+                EndBlocks.END_MOSS,
+                EndBlocks.CHORUS_NYLIUM,
+                EndBlocks.CAVE_MOSS,
+                EndBlocks.CRYSTAL_MOSS,
+                EndBlocks.SHADOW_GRASS,
+                EndBlocks.PINK_MOSS,
+                EndBlocks.AMBER_MOSS,
+                EndBlocks.JUNGLE_MOSS,
+                EndBlocks.SANGNUM,
+                EndBlocks.RUTISCUS,
+                EndBlocks.PALLIDIUM_FULL,
+                EndBlocks.PALLIDIUM_HEAVY,
+                EndBlocks.PALLIDIUM_THIN,
+                EndBlocks.PALLIDIUM_TINY
+        );
+        TagManager.BLOCKS.add(BCLBlockTags.BONEMEAL_SOURCE_OBSIDIAN, EndBlocks.MOSSY_OBSIDIAN);
+        TagManager.BLOCKS.add(BONEMEAL_SOURCE_DRAGON_BONE, EndBlocks.MOSSY_DRAGON_BONE);
+        TagManager.BLOCKS.add(BONEMEAL_TARGET_DRAGON_BONE, EndBlocks.DRAGON_BONE_BLOCK);
 
         TagManager.BLOCKS.addOtherTags(BONEMEAL_TARGET_WATER_GRASS, CommonBlockTags.END_STONES);
     }

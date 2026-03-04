@@ -4,6 +4,7 @@ import mezz.jei.api.helpers.IGuiHelper;
 import org.betterx.bclib.recipes.AlloyingRecipe;
 import org.betterx.betterend.BetterEnd;
 import org.betterx.betterend.blocks.basis.EndAnvilBlock;
+import org.betterx.betterend.blocks.entities.EndStoneSmelterBlockEntity;
 import org.betterx.betterend.recipe.builders.InfusionRecipe;
 import org.betterx.betterend.registry.EndBlocks;
 import org.betterx.bclib.recipes.AnvilRecipe;
@@ -35,7 +36,7 @@ public class JEIPlugin implements IModPlugin {
 
     public static final RecipeType<InfusionDisplay> INFUSION_RECIPE_TYPE =
             RecipeType.create(BetterEnd.MOD_ID, "infusion", InfusionDisplay.class);
-    public static List<ItemStack> ALLOYING_FUELS;
+    public static List<ItemStack> ALLOYING_FUELS = List.of();
 
     @Override
     public @NotNull ResourceLocation getPluginUid() {
@@ -54,28 +55,30 @@ public class JEIPlugin implements IModPlugin {
     @Override
     public void registerRecipes(@NotNull IRecipeRegistration registration) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.level == null) return;
-        RecipeManager manager = Minecraft.getInstance().level.getRecipeManager();
+        if (minecraft.level == null) {
+            return;
+        }
+        RecipeManager manager = minecraft.level.getRecipeManager();
 
-        if (ALLOYING_FUELS == null || ALLOYING_FUELS.isEmpty()) {
-            ALLOYING_FUELS = org.betterx.betterend.blocks.entities.EndStoneSmelterBlockEntity.availableFuels()
+        if (ALLOYING_FUELS.isEmpty()) {
+            ALLOYING_FUELS = EndStoneSmelterBlockEntity.availableFuels()
                     .keySet().stream().map(ItemStack::new).toList();
         }
 
         List<AlloyingRecipe> alloyingRecipes = manager.getAllRecipesFor(AlloyingRecipe.TYPE);
-            List<AlloyingDisplay> alloyingDisplays = alloyingRecipes.stream()
-                    .map(AlloyingDisplay::new)
-                    .toList();
-            registration.addRecipes(ALLOYING_RECIPE_TYPE, alloyingDisplays);
+        List<AlloyingDisplay> alloyingDisplays = alloyingRecipes.stream()
+                .map(AlloyingDisplay::new)
+                .toList();
+        registration.addRecipes(ALLOYING_RECIPE_TYPE, alloyingDisplays);
         var blastingRecipes = manager.getAllRecipesFor(net.minecraft.world.item.crafting.RecipeType.BLASTING);
-            registration.addRecipes(ALLOYING_RECIPE_TYPE,
-                    blastingRecipes.stream().map(AlloyingDisplay::new).toList());
+        registration.addRecipes(ALLOYING_RECIPE_TYPE,
+                blastingRecipes.stream().map(AlloyingDisplay::new).toList());
 
         List<InfusionRecipe> infusionRecipes = manager.getAllRecipesFor(InfusionRecipe.TYPE);
-            List<InfusionDisplay> infusionDisplays = infusionRecipes.stream()
-                    .map(InfusionDisplay::new)
-                    .toList();
-            registration.addRecipes(INFUSION_RECIPE_TYPE, infusionDisplays);
+        List<InfusionDisplay> infusionDisplays = infusionRecipes.stream()
+                .map(InfusionDisplay::new)
+                .toList();
+        registration.addRecipes(INFUSION_RECIPE_TYPE, infusionDisplays);
 
         registration.addRecipes(ANVIL_RECIPE_TYPE, manager.getAllRecipesFor(AnvilRecipe.TYPE));
     }

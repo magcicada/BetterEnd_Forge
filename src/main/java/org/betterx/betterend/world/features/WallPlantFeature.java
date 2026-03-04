@@ -7,6 +7,8 @@ import org.betterx.betterend.BetterEnd;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
@@ -63,6 +65,9 @@ public class WallPlantFeature extends WallScatterFeature<WallPlantFeatureConfig>
             Direction dir
     ) {
         BlockState state = cfg.getPlantState(random, pos);
+        if (state == null || state.isAir()) {
+            return null;
+        }
         Block block = state.getBlock();
         if (block instanceof BaseWallPlantBlock) {
             return withDirectionOrFallback(state, block, BaseWallPlantBlock.FACING, dir, pos);
@@ -96,11 +101,12 @@ public class WallPlantFeature extends WallScatterFeature<WallPlantFeatureConfig>
             Block block,
             BlockPos pos
     ) {
-        final String key = block.toString();
+        final ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(block);
+        final String key = blockId == null ? block.toString() : blockId.toString();
         if (WARNED_INVALID_PLANT_STATES.add(key)) {
             BetterEnd.LOGGER.warning(
                     "[WallPlantFeature] Skipping invalid wall-plant state for block "
-                            + block
+                            + key
                             + " at "
                             + pos
             );

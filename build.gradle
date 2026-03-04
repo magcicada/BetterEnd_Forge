@@ -61,7 +61,6 @@ repositories {
     maven { url 'https://maven.terraformersmc.com' }
     maven { url 'https://maven.ambertation.de/releases' }
     maven { url 'https://repo.spongepowered.org/repository/maven-public/' }
-    maven { url 'https://cursemaven.com' }
     flatDir { dirs 'libs' }
 }
 
@@ -150,8 +149,6 @@ tasks.matching { it.name == "runData" }.configureEach {
     finalizedBy(tasks.named("syncGeneratedResources"))
 }
 
-configurations.maybeCreate('distLibs')
-
 dependencies {
     minecraft "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}"
 
@@ -163,14 +160,10 @@ dependencies {
     runtimeOnly fg.deobf("vazkii.patchouli:Patchouli:${project.patchouli_version}")
 
     compileOnly "dev.emi:emi-forge:${emi_version}:api"
-    //runtimeOnly fg.deobf("dev.emi:emi-forge:${emi_version}")
+    runtimeOnly fg.deobf("dev.emi:emi-forge:${emi_version}")
 
     compileOnly fg.deobf("mezz.jei:jei-1.20.1-forge:${project.jei_version}")
     runtimeOnly fg.deobf("mezz.jei:jei-1.20.1-forge:${project.jei_version}")
-
-    implementation fg.deobf("curse.maven:inventory-profiles-next-495267:7565992")  //missing IPN
-    implementation fg.deobf("curse.maven:libipn-679177:5208511")
-    runtimeOnly fg.deobf("curse.maven:kotlin-for-forge-351264:7291067")
 
     println "Using local BCLib: ${local_bclib}"
     if (local_bclib) {

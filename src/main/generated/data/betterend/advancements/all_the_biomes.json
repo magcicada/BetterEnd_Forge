@@ -420,22 +420,49 @@
   },
   "requirements": [
     [
-      "betterend:dry_shrubland"
+      "betterend:glowing_grasslands"
     ],
     [
-      "betterend:jade_cave"
+      "betterend:ice_starfield"
+    ],
+    [
+      "betterend:neon_oasis"
+    ],
+    [
+      "betterend:crystal_mountains"
+    ],
+    [
+      "betterend:empty_end_cave"
+    ],
+    [
+      "betterend:umbrella_jungle"
+    ],
+    [
+      "betterend:umbra_valley"
+    ],
+    [
+      "betterend:dry_shrubland"
     ],
     [
       "betterend:sulphur_springs"
     ],
     [
-      "betterend:foggy_mushroomland"
-    ],
-    [
-      "betterend:megalake_grove"
+      "betterend:lush_aurora_cave"
     ],
     [
       "betterend:painted_mountains"
+    ],
+    [
+      "betterend:foggy_mushroomland"
+    ],
+    [
+      "betterend:lush_smaragdant_cave"
+    ],
+    [
+      "betterend:lantern_woods"
+    ],
+    [
+      "betterend:megalake_grove"
     ],
     [
       "betterend:dragon_graveyards"
@@ -444,55 +471,28 @@
       "betterend:megalake"
     ],
     [
-      "betterend:ice_starfield"
+      "betterend:empty_smaragdant_cave"
     ],
     [
-      "betterend:lantern_woods"
+      "betterend:jade_cave"
     ],
     [
       "betterend:amber_land"
     ],
     [
-      "betterend:blossoming_spires"
-    ],
-    [
-      "betterend:crystal_mountains"
+      "betterend:chorus_forest"
     ],
     [
       "betterend:empty_aurora_cave"
     ],
     [
+      "betterend:blossoming_spires"
+    ],
+    [
       "betterend:shadow_forest"
     ],
     [
-      "betterend:empty_smaragdant_cave"
-    ],
-    [
-      "betterend:umbra_valley"
-    ],
-    [
-      "betterend:umbrella_jungle"
-    ],
-    [
-      "betterend:neon_oasis"
-    ],
-    [
       "betterend:dust_wastelands"
-    ],
-    [
-      "betterend:chorus_forest"
-    ],
-    [
-      "betterend:empty_end_cave"
-    ],
-    [
-      "betterend:lush_aurora_cave"
-    ],
-    [
-      "betterend:lush_smaragdant_cave"
-    ],
-    [
-      "betterend:glowing_grasslands"
     ]
   ],
   "rewards": {

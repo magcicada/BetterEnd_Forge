@@ -1,5 +1,7 @@
 package org.betterx.betterend.client.render;
 
+import org.betterx.betterend.client.compat.IrisCompat;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -41,6 +43,9 @@ public class BetterEndSkyEffect extends DimensionSpecialEffects {
             boolean isFoggy,
             Runnable setupFog
     ) {
+        if (IrisCompat.shouldUseShaderSky()) {
+            return false;
+        }
         float time = (float) (((level.getDayTime() + (double) partialTick) % 360000L) * 0.000017453292F);
         renderer.renderSkyboxWithStars(poseStack, projectionMatrix, time);
         return true;

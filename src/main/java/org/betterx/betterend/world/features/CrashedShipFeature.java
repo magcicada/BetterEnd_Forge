@@ -1,6 +1,7 @@
 package org.betterx.betterend.world.features;
 
 import org.betterx.bclib.api.v2.levelgen.features.features.DefaultFeature;
+import org.betterx.bclib.util.BlocksHelper;
 import org.betterx.bclib.util.MHelper;
 import org.betterx.bclib.util.StructureHelper;
 import org.betterx.bclib.util.StructureErode;
@@ -9,7 +10,9 @@ import org.betterx.betterend.util.EndStructureHelper;
 import org.betterx.worlds.together.tag.v3.CommonBlockTags;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.BlockPos.MutableBlockPos;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.WorldGenLevel;
@@ -18,6 +21,7 @@ import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.NoteBlockInstrument;
 import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.templatesystem.*;
@@ -52,7 +56,7 @@ public class CrashedShipFeature extends NBTFeature<NBTFeatureConfig> {
     @Override
     protected boolean canSpawn(WorldGenLevel world, BlockPos pos, RandomSource random) {
         long x = pos.getX() >> 4;
-        long z = pos.getX() >> 4;
+        long z = pos.getZ() >> 4;
         if (x * x + z * z < 3600) {
             return false;
         }
@@ -113,7 +117,13 @@ public class CrashedShipFeature extends NBTFeature<NBTFeatureConfig> {
         addStructureData(placementData);
         structure.placeInWorld(world, center, center, placementData.setBoundingBox(bounds), random, 2);
 
+        int erodableBefore = countErodableBlocks(world, bounds);
         StructureErode.erodeIntense(world, bounds, random);
+        int erodableAfter = countErodableBlocks(world, bounds);
+        // Rarely the intense pass can leave the ship almost intact; run a light fallback erosion in that case.
+        if (erodableBefore - erodableAfter < 8) {
+            StructureErode.erode(world, bounds, 1, random);
+        }
         BlockFixer.fixBlocks(
                 world,
                 new BlockPos(bounds.minX(), bounds.minY(), bounds.minZ()),
@@ -126,6 +136,34 @@ public class CrashedShipFeature extends NBTFeature<NBTFeatureConfig> {
     @Override
     protected void addStructureData(StructurePlaceSettings data) {
         data.addProcessor(BlockIgnoreProcessor.STRUCTURE_AND_AIR).addProcessor(REPLACER).setIgnoreEntities(true);
+    }
+
+    private static int countErodableBlocks(WorldGenLevel world, BoundingBox bounds) {
+        MutableBlockPos mut = new MutableBlockPos();
+        int count = 0;
+        for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
+            mut.setX(x);
+            for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
+                mut.setZ(z);
+                for (int y = bounds.minY(); y <= bounds.maxY(); y++) {
+                    mut.setY(y);
+                    BlockState state = world.getBlockState(mut);
+                    if (canErode(state, world, mut)) {
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
+    }
+
+    private static boolean canErode(BlockState state, LevelReader world, BlockPos pos) {
+        if (state.isAir() || state.is(CommonBlockTags.GEN_END_STONES) || state.is(BlockTags.NYLIUM)) {
+            return false;
+        }
+
+        return state.instrument().equals(NoteBlockInstrument.BASEDRUM)
+                && !BlocksHelper.isInvulnerable(state, world, pos);
     }
 
     static {

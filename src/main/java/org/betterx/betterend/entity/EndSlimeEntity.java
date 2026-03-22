@@ -137,7 +137,9 @@ public class EndSlimeEntity extends Slime implements ISlime {
     @Override
     public void remove(RemovalReason reason) {
         int i = this.getSize();
-        if (!this.level().isClientSide && i > 1 && this.isDeadOrDying()) {
+        // L2Hostility Split Suppressor compatibility:
+        // that mod marks slimes with "SuppressSplit" to prevent child spawn on death.
+        if (!this.level().isClientSide && i > 1 && this.isDeadOrDying() && !this.getTags().contains("SuppressSplit")) {
             Component text = this.getCustomName();
             boolean bl = this.isNoAi();
             float f = (float) i / 4.0F;

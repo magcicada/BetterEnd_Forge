@@ -61,6 +61,7 @@ repositories {
     maven { url 'https://maven.terraformersmc.com' }
     maven { url 'https://maven.ambertation.de/releases' }
     maven { url 'https://repo.spongepowered.org/repository/maven-public/' }
+    maven { url "https://api.modrinth.com/maven" }
     flatDir { dirs 'libs' }
 }
 
@@ -90,6 +91,8 @@ minecraft {
 
 mixin {
     add sourceSets.main, "${project.mod_id}.refmap.json"
+    config "betterend.mixins.common.json"
+    config "betterend.mixins.client.json"
 }
 
 sourceSets {
@@ -160,10 +163,15 @@ dependencies {
     runtimeOnly fg.deobf("vazkii.patchouli:Patchouli:${project.patchouli_version}")
 
     compileOnly "dev.emi:emi-forge:${emi_version}:api"
-    runtimeOnly fg.deobf("dev.emi:emi-forge:${emi_version}")
 
     compileOnly fg.deobf("mezz.jei:jei-1.20.1-forge:${project.jei_version}")
     runtimeOnly fg.deobf("mezz.jei:jei-1.20.1-forge:${project.jei_version}")
+    runtimeOnly fg.deobf("maven.modrinth:jade:11.13.2+forge")
+    runtimeOnly fg.deobf("maven.modrinth:kiwi:11.9.2+forge")
+
+    runtimeOnly fg.deobf("maven.modrinth:curios:5.14.1+1.20.1")
+    runtimeOnly fg.deobf("maven.modrinth:caelus:3.2.0+1.20.1")
+    runtimeOnly fg.deobf("maven.modrinth:elytra-slot:k6lA080t")
 
     println "Using local BCLib: ${local_bclib}"
     if (local_bclib) {

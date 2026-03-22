@@ -5,7 +5,9 @@
     "#": {
       "item": "betterend:sulphuric_rock_pillar"
     },
-    "S": []
+    "S": {
+      "item": "betterend:sulphuric_rock_slab"
+    }
   },
   "pattern": [
     "S",

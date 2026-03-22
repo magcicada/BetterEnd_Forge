@@ -5,7 +5,9 @@
     "#": {
       "item": "betterend:flavolite_pillar"
     },
-    "S": []
+    "S": {
+      "item": "betterend:flavolite_slab"
+    }
   },
   "pattern": [
     "S",

@@ -420,22 +420,37 @@
   },
   "requirements": [
     [
-      "betterend:glowing_grasslands"
-    ],
-    [
-      "betterend:ice_starfield"
-    ],
-    [
-      "betterend:neon_oasis"
-    ],
-    [
-      "betterend:crystal_mountains"
+      "betterend:empty_smaragdant_cave"
     ],
     [
       "betterend:empty_end_cave"
     ],
     [
+      "betterend:blossoming_spires"
+    ],
+    [
+      "betterend:neon_oasis"
+    ],
+    [
+      "betterend:dragon_graveyards"
+    ],
+    [
+      "betterend:foggy_mushroomland"
+    ],
+    [
+      "betterend:empty_aurora_cave"
+    ],
+    [
       "betterend:umbrella_jungle"
+    ],
+    [
+      "betterend:amber_land"
+    ],
+    [
+      "betterend:glowing_grasslands"
+    ],
+    [
+      "betterend:lush_aurora_cave"
     ],
     [
       "betterend:umbra_valley"
@@ -444,55 +459,40 @@
       "betterend:dry_shrubland"
     ],
     [
-      "betterend:sulphur_springs"
-    ],
-    [
-      "betterend:lush_aurora_cave"
-    ],
-    [
-      "betterend:painted_mountains"
-    ],
-    [
-      "betterend:foggy_mushroomland"
-    ],
-    [
-      "betterend:lush_smaragdant_cave"
-    ],
-    [
-      "betterend:lantern_woods"
-    ],
-    [
-      "betterend:megalake_grove"
-    ],
-    [
-      "betterend:dragon_graveyards"
-    ],
-    [
-      "betterend:megalake"
-    ],
-    [
-      "betterend:empty_smaragdant_cave"
+      "betterend:shadow_forest"
     ],
     [
       "betterend:jade_cave"
     ],
     [
-      "betterend:amber_land"
+      "betterend:lantern_woods"
+    ],
+    [
+      "betterend:lush_smaragdant_cave"
+    ],
+    [
+      "betterend:megalake"
+    ],
+    [
+      "betterend:dust_wastelands"
+    ],
+    [
+      "betterend:painted_mountains"
+    ],
+    [
+      "betterend:sulphur_springs"
     ],
     [
       "betterend:chorus_forest"
     ],
     [
-      "betterend:empty_aurora_cave"
+      "betterend:megalake_grove"
     ],
     [
-      "betterend:blossoming_spires"
+      "betterend:ice_starfield"
     ],
     [
-      "betterend:shadow_forest"
-    ],
-    [
-      "betterend:dust_wastelands"
+      "betterend:crystal_mountains"
     ]
   ],
   "rewards": {

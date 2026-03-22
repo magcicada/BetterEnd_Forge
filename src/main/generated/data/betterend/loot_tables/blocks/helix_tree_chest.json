@@ -13,14 +13,34 @@
           "type": "minecraft:item",
           "functions": [
             {
-              "function": "minecraft:copy_components",
-              "include": [
-                "minecraft:custom_name",
-                "minecraft:container",
-                "minecraft:lock",
-                "minecraft:container_loot"
-              ],
+              "function": "minecraft:copy_name",
               "source": "block_entity"
+            },
+            {
+              "function": "minecraft:copy_nbt",
+              "source": "block_entity",
+              "ops": [
+                {
+                  "source": "Items",
+                  "target": "BlockEntityTag.Items",
+                  "op": "replace"
+                },
+                {
+                  "source": "Lock",
+                  "target": "BlockEntityTag.Lock",
+                  "op": "replace"
+                },
+                {
+                  "source": "LootTable",
+                  "target": "BlockEntityTag.LootTable",
+                  "op": "replace"
+                },
+                {
+                  "source": "LootTableSeed",
+                  "target": "BlockEntityTag.LootTableSeed",
+                  "op": "replace"
+                }
+              ]
             }
           ],
           "name": "betterend:helix_tree_chest"

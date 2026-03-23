@@ -9,6 +9,7 @@ import net.minecraft.client.renderer.BiomeColors;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.BlockPos.MutableBlockPos;
 import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.world.level.chunk.MissingPaletteEntryException;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -28,17 +29,31 @@ public class BiomeColorsMixin {
     @Inject(method = "getAverageWaterColor", at = @At("RETURN"), cancellable = true)
     private static void be_getWaterColor(BlockAndTintGetter world, BlockPos pos, CallbackInfoReturnable<Integer> info) {
         if (ClientOptions.useSulfurWaterColor()) {
+            if (isDistantHorizonsTintContext(world)) {
+                // DH uses its own tint getters for LOD rendering; avoid world-state probing here.
+                return;
+            }
+
+            BlockAndTintGetter view = world;
             MutableBlockPos mut = new MutableBlockPos();
             mut.setY(pos.getY());
-            for (int i = 0; i < OFFSETS.length; i++) {
-                mut.setX(pos.getX() + OFFSETS[i].x);
-                mut.setZ(pos.getZ() + OFFSETS[i].y);
-                if ((world.getBlockState(mut).is(EndBlocks.BRIMSTONE))) {
-                    info.setReturnValue(i < 4 ? POISON_COLOR : STREAM_COLOR);
-                    return;
+            try {
+                for (int i = 0; i < OFFSETS.length; i++) {
+                    mut.setX(pos.getX() + OFFSETS[i].x);
+                    mut.setZ(pos.getZ() + OFFSETS[i].y);
+                    if ((view.getBlockState(mut).is(EndBlocks.BRIMSTONE))) {
+                        info.setReturnValue(i < 4 ? POISON_COLOR : STREAM_COLOR);
+                        return;
+                    }
                 }
+            } catch (MissingPaletteEntryException | UnsupportedOperationException ignored) {
+                // Avoid breaking water color rendering on async/chunk palette races (e.g., DH LOD path).
             }
         }
+    }
+
+    private static boolean isDistantHorizonsTintContext(BlockAndTintGetter world) {
+        return world != null && world.getClass().getName().contains("distanthorizons");
     }
 
     static {

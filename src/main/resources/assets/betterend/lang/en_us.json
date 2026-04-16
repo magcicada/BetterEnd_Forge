@@ -1118,5 +1118,7 @@
   "betterend.jei.infusion.time&val": "%s ticks",
   "betterend.jei.container.infusion": "Infusion Recipes",
   "betterend.jei.alloying.experience_time": "%s XP | %s s",
-  "betterend.jei.container.alloying": "Alloying and Blasting"
+  "betterend.jei.container.alloying": "Alloying and Blasting",
+
+  "config.jade.plugin_betterend.plant_growth": "BetterEnd Plants"
 }

@@ -179,7 +179,7 @@ dependencies {
     if (local_bclib) {
         implementation project(path: ":BCLib", configuration: 'dev')
         } else {
-            implementation fg.deobf("curse.maven:bclib-forge-1435106:7713479")
+            implementation fg.deobf("curse.maven:bclib-forge-1435106:7800921")
     }
 
     println "Using local WunderLib: ${local_wunderlib}"

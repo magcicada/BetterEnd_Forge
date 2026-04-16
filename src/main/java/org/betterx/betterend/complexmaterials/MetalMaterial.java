@@ -278,6 +278,14 @@ public class MetalMaterial {
         TagManager.BLOCKS.add(BlockTags.ANVIL, anvilBlock);
         TagManager.BLOCKS.add(BlockTags.BEACON_BASE_BLOCKS, block);
         TagManager.ITEMS.add(ItemTags.BEACON_PAYMENT_ITEMS, ingot);
+        TagManager.BLOCKS.addUntyped(
+                TagManager.BLOCKS.makeCommonTag("chains"),
+                BetterEnd.makeID(name + "_chain")
+        );
+        TagManager.ITEMS.addUntyped(
+                TagManager.ITEMS.makeCommonTag("chains"),
+                BetterEnd.makeID(name + "_chain")
+        );
         if (hasOre && ore != null) {
             TagManager.BLOCKS.add(BlockTags.DRAGON_IMMUNE, ore, bars);
         } else {

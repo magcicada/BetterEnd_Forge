@@ -30,6 +30,7 @@ public abstract class WallScatterFeature<FC extends ScatterFeatureConfig> extend
         final RandomSource random = featureConfig.random();
         final BlockPos center = featureConfig.origin();
         final WorldGenLevel world = featureConfig.level();
+        final Direction[] dirOrder = DIR.clone();
         int maxY = world.getHeight(Heightmap.Types.WORLD_SURFACE, center.getX(), center.getZ());
         int minY = BlocksHelper.upRay(world, new BlockPos(center.getX(), 0, center.getZ()), maxY);
         if (maxY < 10 || maxY < minY) {
@@ -45,8 +46,8 @@ public abstract class WallScatterFeature<FC extends ScatterFeatureConfig> extend
                 for (int z = -cfg.radius; z <= cfg.radius; z++) {
                     mut.setZ(center.getZ() + z);
                     if (random.nextInt(4) == 0 && world.isEmptyBlock(mut)) {
-                        shuffle(random);
-                        for (Direction dir : DIR) {
+                        shuffle(random, dirOrder);
+                        for (Direction dir : dirOrder) {
                             if (canGenerate(cfg, world, random, mut, dir)) {
                                 generate(cfg, world, random, mut, dir);
                                 break;
@@ -60,12 +61,12 @@ public abstract class WallScatterFeature<FC extends ScatterFeatureConfig> extend
         return true;
     }
 
-    private void shuffle(RandomSource random) {
+    private void shuffle(RandomSource random, Direction[] directions) {
         for (int i = 0; i < 4; i++) {
             int j = random.nextInt(4);
-            Direction d = DIR[i];
-            DIR[i] = DIR[j];
-            DIR[j] = d;
+            Direction d = directions[i];
+            directions[i] = directions[j];
+            directions[j] = d;
         }
     }
 }

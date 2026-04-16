@@ -5,7 +5,9 @@
     "#": {
       "item": "betterend:smaragdant_crystal_pillar"
     },
-    "S": []
+    "S": {
+      "item": "betterend:smaragdant_crystal_slab"
+    }
   },
   "pattern": [
     "S",

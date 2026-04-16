@@ -5,7 +5,9 @@
     "#": {
       "item": "betterend:sandy_jadestone_pillar"
     },
-    "S": []
+    "S": {
+      "item": "betterend:sandy_jadestone_slab"
+    }
   },
   "pattern": [
     "S",

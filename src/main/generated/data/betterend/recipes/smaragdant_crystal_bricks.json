@@ -3,7 +3,9 @@
   "category": "misc",
   "group": "end_bricks",
   "key": {
-    "#": []
+    "#": {
+      "item": "betterend:smaragdant_crystal"
+    }
   },
   "pattern": [
     "##",

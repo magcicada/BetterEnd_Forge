@@ -10,9 +10,7 @@
             {
               "condition": "minecraft:match_tool",
               "predicate": {
-                "items": [
-                  "#c:tools/shears"
-                ]
+                "tag": "c:tools/shears"
               }
             },
             {
@@ -21,9 +19,7 @@
                 {
                   "condition": "minecraft:match_tool",
                   "predicate": {
-                    "items": [
-                      "#minecraft:hoes"
-                    ]
+                    "tag": "minecraft:hoes"
                   }
                 },
                 {
@@ -59,3 +55,4 @@
   ],
   "random_sequence": "betterend:blocks/jungle_vine"
 }
+

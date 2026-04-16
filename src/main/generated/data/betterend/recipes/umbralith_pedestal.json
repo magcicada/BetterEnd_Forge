@@ -5,7 +5,9 @@
     "#": {
       "item": "betterend:umbralith_pillar"
     },
-    "S": []
+    "S": {
+      "item": "betterend:umbralith_slab"
+    }
   },
   "pattern": [
     "S",

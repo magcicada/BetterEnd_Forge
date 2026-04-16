@@ -1,24 +1,18 @@
 package org.betterx.betterend.mixin.common;
 
-import org.betterx.bclib.api.v2.levelgen.biomes.BiomeAPI;
-import org.betterx.betterend.BetterEnd;
-import org.betterx.betterend.registry.EndBlocks;
+import org.betterx.betterend.util.BETickChunkContext;
 import org.betterx.betterend.world.generator.GeneratorOptions;
 import org.betterx.betterend.world.generator.TerrainGenerator;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.progress.ChunkProgressListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.RandomSequences;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.dimension.LevelStem;
@@ -38,7 +32,6 @@ import java.util.function.Supplier;
 
 @Mixin(ServerLevel.class)
 public abstract class ServerLevelMixin extends Level {
-
     private final static List<ResourceKey<DimensionType>> BE_TEST_DIMENSIONS = List.of(
             BuiltinDimensionTypes.OVERWORLD,
             BuiltinDimensionTypes.OVERWORLD_CAVES,
@@ -93,14 +86,13 @@ public abstract class ServerLevelMixin extends Level {
         TerrainGenerator.makeObsidianPlatform(serverLevel, info);
     }
 
-    @ModifyArg(method = "tickChunk", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;setBlockAndUpdate(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;)Z"))
-    private BlockState be_modifyTickState(BlockPos pos, BlockState state) {
-        if (state.is(Blocks.ICE)) {
-            ResourceLocation biome = BiomeAPI.getBiomeID(getBiome(pos));
-            if (biome.getNamespace().equals(BetterEnd.MOD_ID)) {
-                state = EndBlocks.EMERALD_ICE.defaultBlockState();
-            }
-        }
-        return state;
+    @Inject(method = "tickChunk", at = @At("HEAD"), require = 0)
+    private void be_tickChunkStart(CallbackInfo info) {
+        BETickChunkContext.push();
+    }
+
+    @Inject(method = "tickChunk", at = @At("RETURN"), require = 0)
+    private void be_tickChunkEnd(CallbackInfo info) {
+        BETickChunkContext.pop();
     }
 }

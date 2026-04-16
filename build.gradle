@@ -168,6 +168,8 @@ dependencies {
 
     compileOnly fg.deobf("mezz.jei:jei-1.20.1-forge:${project.jei_version}")
     runtimeOnly fg.deobf("mezz.jei:jei-1.20.1-forge:${project.jei_version}")
+    compileOnly fg.deobf("maven.modrinth:jade:11.13.2+forge")
+    compileOnly fg.deobf("maven.modrinth:kiwi:11.9.2+forge")
     runtimeOnly fg.deobf("maven.modrinth:jade:11.13.2+forge")
     runtimeOnly fg.deobf("maven.modrinth:kiwi:11.9.2+forge")
 

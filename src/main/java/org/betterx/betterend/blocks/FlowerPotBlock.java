@@ -56,11 +56,17 @@ import net.minecraftforge.fml.loading.FMLPaths;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.joml.Vector3f;
 
 import java.io.File;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -153,19 +159,28 @@ public class FlowerPotBlock extends BaseBlockNotFull implements RenderLayerProvi
             JsonElement soilsObj = obj.get("flower_pots").getAsJsonObject().get("soils");
             if (plantsObj != null) {
                 plantsObj.getAsJsonObject().entrySet().forEach(entry -> {
-                    String name = entry.getKey().substring(0, entry.getKey().indexOf(' '));
+                    String name = parseConfigKey(entry.getKey());
                     reservedPlantsIDs.put(name, entry.getValue().getAsInt());
                 });
             }
             if (soilsObj != null) {
                 soilsObj.getAsJsonObject().entrySet().forEach(entry -> {
-                    String name = entry.getKey().substring(0, entry.getKey().indexOf(' '));
+                    String name = parseConfigKey(entry.getKey());
                     reservedSoilIDs.put(name, entry.getValue().getAsInt());
                 });
             }
         }
 
-        EndBlocks.getModBlocks().forEach(block -> {
+        loadPlantIdsFromBundledFlowerPotState(reservedPlantsIDs);
+        loadSoilIdsFromBundledFlowerPotModels(reservedSoilIDs);
+
+        List<Block> sortedBlocks = new ArrayList<>(EndBlocks.getModBlocks());
+        sortedBlocks.sort(Comparator.comparing(block -> {
+            ResourceLocation id = BuiltInRegistries.BLOCK.getKey(block);
+            return id == null ? "" : id.toString();
+        }));
+
+        sortedBlocks.forEach(block -> {
             if (block instanceof PottablePlant && ((PottablePlant) block).canBePotted()) {
                 processBlock(plants, block, "flower_pots.plants", reservedPlantsIDs);
             } else if (block instanceof PottableTerrain && ((PottableTerrain) block).canBePotted()) {
@@ -200,8 +215,9 @@ public class FlowerPotBlock extends BaseBlockNotFull implements RenderLayerProvi
 
     private void processBlock(Block[] target, Block block, String path, Map<String, Integer> idMap) {
         ResourceLocation location = BuiltInRegistries.BLOCK.getKey(block);
-        if (idMap.containsKey(location.getPath())) {
-            target[idMap.get(location.getPath())] = block;
+        Integer reserved = idMap.get(location.getPath());
+        if (reserved != null && reserved >= 0 && reserved < target.length && target[reserved] == null) {
+            target[reserved] = block;
         } else {
             for (int i = 0; i < target.length; i++) {
                 if (!idMap.containsValue(i)) {
@@ -212,6 +228,208 @@ public class FlowerPotBlock extends BaseBlockNotFull implements RenderLayerProvi
                 }
             }
         }
+    }
+
+    private void loadPlantIdsFromBundledFlowerPotState(Map<String, Integer> reservedPlantsIDs) {
+        JsonObject stateJson = loadBundledJson("assets/betterend/blockstates/endstone_flower_pot.json");
+        if (stateJson == null) {
+            return;
+        }
+
+        JsonArray multipart = asArray(stateJson.get("multipart"));
+        if (multipart == null || multipart.isEmpty()) {
+            return;
+        }
+
+        Map<String, Integer> modelToId = Maps.newHashMap();
+        for (JsonElement partElement : multipart) {
+            JsonObject part = asObject(partElement);
+            JsonObject when = part == null ? null : asObject(part.get("when"));
+            JsonObject apply = part == null ? null : asObject(part.get("apply"));
+            if (when == null || apply == null) {
+                continue;
+            }
+            JsonElement plantIdElement = when.get("plant_id");
+            JsonElement modelElement = apply.get("model");
+            if (plantIdElement == null || modelElement == null || !modelElement.isJsonPrimitive()) {
+                continue;
+            }
+            int id = parseInt(plantIdElement.getAsString(), -1);
+            if (id < 1) {
+                continue;
+            }
+            String modelId = normalizeModelId(modelElement.getAsString(), BetterEnd.MOD_ID);
+            modelToId.put(modelId, id - 1);
+        }
+
+        if (modelToId.isEmpty()) {
+            return;
+        }
+
+        EndBlocks.getModBlocks().forEach(block -> {
+            if (!(block instanceof PottablePlant)) {
+                return;
+            }
+            PottablePlant plant = (PottablePlant) block;
+            if (!plant.canBePotted()) {
+                return;
+            }
+
+            ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(block);
+            if (blockId == null) {
+                return;
+            }
+
+            String modelId = resolvePlantModelId(block, plant, blockId);
+            Integer mapped = modelToId.get(modelId);
+            if (mapped != null) {
+                reservedPlantsIDs.put(blockId.getPath(), mapped);
+            }
+        });
+    }
+
+    private String resolvePlantModelId(Block block, PottablePlant plant, ResourceLocation blockId) {
+        String pottedModel = blockId.getNamespace() + ":block/" + blockId.getPath() + "_potted";
+        String pottedModelPath = "assets/" + blockId.getNamespace() + "/models/block/" + blockId.getPath() + "_potted.json";
+
+        if (hasBundledResource(pottedModelPath)
+                || block instanceof SaplingBlock
+                || block instanceof PottableLeavesBlock) {
+            return pottedModel;
+        }
+
+        JsonObject blockState = loadBundledJson("assets/" + blockId.getNamespace() + "/blockstates/" + blockId.getPath() + ".json");
+        if (blockState == null) {
+            return pottedModel;
+        }
+
+        JsonElement variants = blockState.get("variants");
+        if (variants == null) {
+            return pottedModel;
+        }
+
+        String modelPath = null;
+        if (variants.isJsonArray() && variants.getAsJsonArray().size() > 0) {
+            modelPath = extractModel(variants.getAsJsonArray().get(0));
+        } else if (variants.isJsonObject()) {
+            JsonElement selected = variants.getAsJsonObject().get(plant.getPottedState());
+            if (selected != null) {
+                if (selected.isJsonArray() && selected.getAsJsonArray().size() > 0) {
+                    modelPath = extractModel(selected.getAsJsonArray().get(0));
+                } else {
+                    modelPath = extractModel(selected);
+                }
+            }
+        }
+
+        return modelPath == null ? pottedModel : normalizeModelId(modelPath, blockId.getNamespace());
+    }
+
+    private void loadSoilIdsFromBundledFlowerPotModels(Map<String, Integer> reservedSoilIDs) {
+        Map<String, Integer> textureToId = Maps.newHashMap();
+
+        for (int i = 0; i < 64; i++) {
+            JsonObject model = loadBundledJson("assets/betterend/models/block/flower_pot_soil_" + i + ".json");
+            if (model == null) {
+                continue;
+            }
+
+            JsonObject textures = asObject(model.get("textures"));
+            if (textures == null) {
+                continue;
+            }
+
+            JsonElement textureElement = textures.get("texture");
+            if (textureElement == null || !textureElement.isJsonPrimitive()) {
+                continue;
+            }
+
+            textureToId.put(textureElement.getAsString(), i);
+        }
+
+        if (textureToId.isEmpty()) {
+            return;
+        }
+
+        EndBlocks.getModBlocks().forEach(block -> {
+            if (!(block instanceof PottableTerrain terrain) || !terrain.canBePotted()) {
+                return;
+            }
+
+            ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(block);
+            if (blockId == null) {
+                return;
+            }
+
+            String texture = blockId.getNamespace() + ":block/" + blockId.getPath() + "_top";
+            if (blockId.getPath().contains("rutiscus")) {
+                texture += "_1";
+            }
+
+            Integer soilId = textureToId.get(texture);
+            if (soilId != null) {
+                reservedSoilIDs.put(blockId.getPath(), soilId);
+            }
+        });
+    }
+
+    private static String extractModel(JsonElement element) {
+        JsonObject obj = asObject(element);
+        JsonElement modelElement = obj == null ? null : obj.get("model");
+        if (modelElement == null || !modelElement.isJsonPrimitive()) {
+            return null;
+        }
+        return modelElement.getAsString();
+    }
+
+    private static String parseConfigKey(String key) {
+        int separator = key.indexOf(' ');
+        return separator > 0 ? key.substring(0, separator) : key;
+    }
+
+    private static JsonObject loadBundledJson(String path) {
+        try (InputStream stream = FlowerPotBlock.class.getClassLoader().getResourceAsStream(path)) {
+            if (stream == null) {
+                return null;
+            }
+            InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
+            JsonElement json = JsonFactory.loadJson(reader);
+            if (json != null && json.isJsonObject()) {
+                return json.getAsJsonObject();
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    private static boolean hasBundledResource(String path) {
+        return FlowerPotBlock.class.getClassLoader().getResource(path) != null;
+    }
+
+    private static String normalizeModelId(String modelId, String defaultNamespace) {
+        ResourceLocation model = modelId.contains(":")
+                ? ResourceLocation.tryParse(modelId)
+                : ResourceLocation.tryBuild(defaultNamespace, modelId);
+        if (model == null) {
+            return defaultNamespace + ":" + modelId;
+        }
+        return model.toString();
+    }
+
+    private static int parseInt(String value, int fallback) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            return fallback;
+        }
+    }
+
+    private static JsonObject asObject(JsonElement element) {
+        return element != null && element.isJsonObject() ? element.getAsJsonObject() : null;
+    }
+
+    private static JsonArray asArray(JsonElement element) {
+        return element != null && element.isJsonArray() ? element.getAsJsonArray() : null;
     }
 
     @Override

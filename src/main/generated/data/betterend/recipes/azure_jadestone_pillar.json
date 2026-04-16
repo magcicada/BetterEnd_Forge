@@ -3,7 +3,9 @@
   "category": "misc",
   "group": "end_pillar",
   "key": {
-    "#": []
+    "#": {
+      "item": "betterend:azure_jadestone_slab"
+    }
   },
   "pattern": [
     "#",

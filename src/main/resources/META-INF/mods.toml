@@ -54,6 +54,13 @@ versionRange="[${patchouli_version},)"
 ordering="NONE"
 side="CLIENT"
 
+[[dependencies.${mod_id}]]
+modId="elytraslot"
+mandatory=false
+versionRange="[1.0,)"
+ordering="NONE"
+side="BOTH"
+
 [[mixins]]
 config="betterend.mixins.common.json"
 

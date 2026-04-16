@@ -5,7 +5,9 @@
     "#": {
       "item": "betterend:violecite_pillar"
     },
-    "S": []
+    "S": {
+      "item": "betterend:violecite_slab"
+    }
   },
   "pattern": [
     "S",

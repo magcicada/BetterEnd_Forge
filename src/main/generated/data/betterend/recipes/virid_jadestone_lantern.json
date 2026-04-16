@@ -6,7 +6,14 @@
     "#": {
       "item": "betterend:crystal_shards"
     },
-    "S": []
+    "S": [
+      {
+        "item": "betterend:virid_jadestone_slab"
+      },
+      {
+        "item": "betterend:virid_jadestone_bricks_slab"
+      }
+    ]
   },
   "pattern": [
     "S",

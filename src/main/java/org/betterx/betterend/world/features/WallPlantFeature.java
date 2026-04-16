@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class WallPlantFeature extends WallScatterFeature<WallPlantFeatureConfig> {
     private static final Set<String> WARNED_INVALID_PLANT_STATES = ConcurrentHashMap.newKeySet();
-    protected BlockState plant;
+    private static final ThreadLocal<BlockState> PLANT_STATE = new ThreadLocal<>();
 
     public WallPlantFeature() {
         super(WallPlantFeatureConfig.CODEC);
@@ -35,10 +35,12 @@ public class WallPlantFeature extends WallScatterFeature<WallPlantFeatureConfig>
             BlockPos pos,
             Direction dir
     ) {
-        plant = resolvePlantState(cfg, world, random, pos, dir);
+        BlockState plant = resolvePlantState(cfg, world, random, pos, dir);
         if (plant == null) {
+            clearCachedPlantState();
             return false;
         }
+        cachePlantState(plant);
         Block block = plant.getBlock();
         return block.canSurvive(plant, world, pos);
     }
@@ -51,10 +53,27 @@ public class WallPlantFeature extends WallScatterFeature<WallPlantFeatureConfig>
             BlockPos pos,
             Direction dir
     ) {
+        BlockState plant = getCachedPlantState();
+        if (plant == null) {
+            plant = resolvePlantState(cfg, world, random, pos, dir);
+        }
+        clearCachedPlantState();
         if (plant == null) {
             return;
         }
         BlocksHelper.setWithoutUpdate(world, pos, plant);
+    }
+
+    protected final void clearCachedPlantState() {
+        PLANT_STATE.remove();
+    }
+
+    protected final BlockState getCachedPlantState() {
+        return PLANT_STATE.get();
+    }
+
+    private void cachePlantState(BlockState plant) {
+        PLANT_STATE.set(plant);
     }
 
     private BlockState resolvePlantState(

@@ -11,11 +11,15 @@ import org.betterx.betterend.world.generator.GeneratorOptions;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.renderer.Sheets;
+import net.minecraft.client.renderer.block.BlockModelShaper;
+import net.minecraft.client.resources.model.ModelBakery;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ChorusFlowerBlock;
 
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -24,6 +28,7 @@ import net.minecraftforge.client.event.ModelEvent;
 import net.minecraftforge.client.event.RegisterDimensionSpecialEffectsEvent;
 import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -34,6 +39,8 @@ import java.util.Map;
 @OnlyIn(Dist.CLIENT)
 @Mod.EventBusSubscriber(modid = BetterEnd.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class BetterEndClient {
+    private static final ResourceLocation FLOWER_BLOCK_MODEL = BetterEnd.makeID("block/chorus_plant_flower");
+    private static final ResourceLocation OPEN_FLOWER_BLOCK_MODEL = BetterEnd.makeID("block/chorus_plant_flower_open");
     private static final ModelResourceLocation CHECK_FLOWER_ID = new ModelResourceLocation(
             new ResourceLocation("minecraft", "chorus_flower"),
             "inventory"
@@ -95,14 +102,28 @@ public class BetterEndClient {
         if (!GeneratorOptions.changeChorusPlant()) {
             return;
         }
+        event.register(FLOWER_BLOCK_MODEL);
+        event.register(OPEN_FLOWER_BLOCK_MODEL);
         event.register(TO_LOAD_FLOWER_ID);
         event.register(TO_LOAD_PLANT_ID);
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onModifyBakedModels(ModelEvent.ModifyBakingResult event) {
         Map<ResourceLocation, net.minecraft.client.resources.model.BakedModel> models = event.getModels();
         if (GeneratorOptions.changeChorusPlant()) {
+            // Bind every vanilla flower state explicitly as well as its inventory model.
+            // This does not depend on another loader following ModelBakery.loadModel's
+            // vanilla blockstate-resource lookup, which ModelLoaderMixin intercepts.
+            var missingModel = models.get(ModelBakery.MISSING_MODEL_LOCATION);
+            var closedFlower = models.get(FLOWER_BLOCK_MODEL);
+            var openFlower = models.get(OPEN_FLOWER_BLOCK_MODEL);
+            for (var state : Blocks.CHORUS_FLOWER.getStateDefinition().getPossibleStates()) {
+                var model = state.getValue(ChorusFlowerBlock.AGE) == 5 ? openFlower : closedFlower;
+                if (model != null && model != missingModel) {
+                    models.put(BlockModelShaper.stateToModelLocation(state), model);
+                }
+            }
             var flowerModel = models.get(TO_LOAD_FLOWER_ID);
             var plantModel = models.get(TO_LOAD_PLANT_ID);
             if (flowerModel != null) {

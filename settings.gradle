@@ -1,29 +1,9 @@
 pluginManagement {
     repositories {
         maven { url = 'https://maven.minecraftforge.net/' }
+        maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
         gradlePluginPortal()
     }
 }
-// Local BetterX libraries are required for this workspace build.
-def BCLibPath = '../BCLib-1.20.1'
-def WunderLibPath = '../WunderLib-1.20.1'
 
-def BCLibFolder = new File(BCLibPath)
-def WunderLibFolder = new File(WunderLibPath)
-if (!BCLibFolder.isDirectory()) {
-    throw new GradleException("Required local BCLib checkout not found: ${BCLibFolder.canonicalPath}")
-}
-if (!WunderLibFolder.isDirectory()) {
-    throw new GradleException("Required local WunderLib checkout not found: ${WunderLibFolder.canonicalPath}")
-}
-
-println "Using required local BCLib from '${BCLibFolder}'"
-println "Using required local WunderLib from '${WunderLibFolder}'"
-
-include ':BCLib'
-project(":BCLib").projectDir = BCLibFolder
-project(':BCLib').buildFileName = './bclib-composit.gradle'
-
-include ':WunderLib'
-project(":WunderLib").projectDir = WunderLibFolder
-project(':WunderLib').buildFileName = './wunderlib-composit.gradle'
+rootProject.name = 'BetterEnd-Forge'

@@ -51,10 +51,13 @@ archivesBaseName = project.archives_base_name
 version = project.mod_version
 group = project.maven_group
 
-def local_bclib = findProject(':BCLib') != null
-def local_wunderlib = findProject(':WunderLib') != null
-
 repositories {
+    mavenCentral()
+    maven {
+        name = "CurseMaven"
+        url = "https://cursemaven.com"
+        content { includeGroup "curse.maven" }
+    }
     maven { url "https://libraries.minecraft.net" }
     maven { url "https://maven.minecraftforge.net" }
     maven { url "https://maven.dblsaiko.net/" }
@@ -113,18 +116,10 @@ sourceSets {
     }
 }
 
-def datagenTaskDeps = [tasks.matching { it.name == "runData" }]
-if (local_bclib) {
-    datagenTaskDeps << project(":BCLib").tasks.matching { it.name == "runData" }
-}
-if (local_wunderlib) {
-    datagenTaskDeps << project(":WunderLib").tasks.matching { it.name == "runData" }
-}
-
 tasks.register("generateBetterXResources") {
     group = "forge"
-    description = "Runs datagen for BetterEnd and local BetterX libraries."
-    dependsOn(datagenTaskDeps)
+    description = "Runs datagen for BetterEnd using the released BetterX libraries."
+    dependsOn(tasks.matching { it.name == "runData" })
 }
 
 def generatedResourcesDir = file("src/main/generated")
@@ -170,15 +165,18 @@ dependencies {
 
     compileOnly fg.deobf("mezz.jei:jei-1.20.1-forge:${project.jei_version}")
     runtimeOnly fg.deobf("mezz.jei:jei-1.20.1-forge:${project.jei_version}")
-    runtimeOnly fg.deobf("maven.modrinth:jade:11.13.2+forge")
-    runtimeOnly fg.deobf("maven.modrinth:kiwi:11.9.2+forge")
+    // Optional convenience mods for local dev runs; not needed by the CI build.
+    if (providers.gradleProperty("devExtras").orElse("false").get().toBoolean()) {
+        runtimeOnly fg.deobf("maven.modrinth:jade:11.13.2+forge")
+        runtimeOnly fg.deobf("maven.modrinth:kiwi:11.9.2+forge")
+        runtimeOnly fg.deobf("maven.modrinth:curios:5.14.1+1.20.1")
+        runtimeOnly fg.deobf("maven.modrinth:caelus:3.2.0+1.20.1")
+        runtimeOnly fg.deobf("maven.modrinth:elytra-slot:k6lA080t")
+    }
 
-    runtimeOnly fg.deobf("maven.modrinth:curios:5.14.1+1.20.1")
-    runtimeOnly fg.deobf("maven.modrinth:caelus:3.2.0+1.20.1")
-    runtimeOnly fg.deobf("maven.modrinth:elytra-slot:k6lA080t")
-
-    implementation project(path: ":BCLib", configuration: 'dev')
-    implementation project(path: ":WunderLib", configuration: 'dev')
+    // CurseMaven does not declare transitive mod dependencies, so declare both.
+    implementation fg.deobf("curse.maven:bclib-forge-${project.bclib_curse_project_id}:${project.bclib_curse_file_id}")
+    implementation fg.deobf("curse.maven:wunderlib-forge-${project.wunderlib_curse_project_id}:${project.wunderlib_curse_file_id}")
 }
 
 processResources {
@@ -225,6 +223,7 @@ task sourcesJar(type: Jar, dependsOn: classes) {
 }
 
 java {
+    toolchain.languageVersion = JavaLanguageVersion.of(17)
     withSourcesJar()
 }
 
@@ -248,7 +247,6 @@ configurations {
         canBeResolved = false
         canBeConsumed = true
     }
-    distLibs
 }
 
 artifacts {
@@ -442,62 +440,5 @@ task nextVersion() {
     }
 }
 
-def distDir = new File(rootProject.projectDir.parentFile, "betterx-dist 1.20.1")
-def modrinthModsDir = new File("C:/Users/Redmi/AppData/Roaming/ModrinthApp/profiles/Forge 1.20.1 (1)/mods")
-def betterEndReobfJar = layout.buildDirectory.file("reobfJar/output.jar")
-def bclibReobfJar = local_bclib ? project(":BCLib").layout.buildDirectory.file("reobfJar/output.jar") : null
-def wunderlibReobfJar = local_wunderlib ? project(":WunderLib").layout.buildDirectory.file("reobfJar/output.jar") : null
-tasks.register("copyDistJars", Copy) {
-    dependsOn(tasks.named("reobfJar"))
-    from(betterEndReobfJar) {
-        rename { tasks.named("jar").get().archiveFileName.get() }
-    }
-    if (local_bclib) {
-        dependsOn(project(":BCLib").tasks.named("reobfJar"))
-        from(bclibReobfJar) {
-            rename { project(":BCLib").tasks.named("jar").get().archiveFileName.get() }
-        }
-    } else {
-        dependsOn(configurations.distLibs)
-        from(configurations.distLibs)
-    }
-    if (local_wunderlib) {
-        dependsOn(project(":WunderLib").tasks.named("reobfJar"))
-        from(wunderlibReobfJar) {
-            rename { project(":WunderLib").tasks.named("jar").get().archiveFileName.get() }
-        }
-    } else {
-        dependsOn(configurations.distLibs)
-    }
-    into(distDir)
-}
-
-tasks.register("copyModrinthJars", Copy) {
-    dependsOn(tasks.named("reobfJar"))
-    onlyIf { modrinthModsDir.parentFile.exists() }
-    from(betterEndReobfJar) {
-        rename { tasks.named("jar").get().archiveFileName.get() }
-    }
-    if (local_bclib) {
-        dependsOn(project(":BCLib").tasks.named("reobfJar"))
-        from(bclibReobfJar) {
-            rename { project(":BCLib").tasks.named("jar").get().archiveFileName.get() }
-        }
-    } else {
-        dependsOn(configurations.distLibs)
-        from(configurations.distLibs)
-    }
-    if (local_wunderlib) {
-        dependsOn(project(":WunderLib").tasks.named("reobfJar"))
-        from(wunderlibReobfJar) {
-            rename { project(":WunderLib").tasks.named("jar").get().archiveFileName.get() }
-        }
-    } else {
-        dependsOn(configurations.distLibs)
-    }
-    into(modrinthModsDir)
-}
-
-tasks.named("build") {
-    finalizedBy("copyDistJars", "copyModrinthJars")
-}
+// Produce a normal, reobfuscated Forge mod in build/libs without workstation copy tasks.
+jar.finalizedBy('reobfJar')

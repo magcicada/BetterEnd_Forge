@@ -26,6 +26,20 @@ public class CraftingRecipes {
                         .setOutputCount(4)
                         .shapeless()
                         .build();
+        BCLRecipeBuilder.crafting(BetterEnd.makeID("small_amaranita_mushroom"), EndBlocks.SMALL_AMARANITA_MUSHROOM)
+                        .addMaterial('#', EndBlocks.AMARANITA_HYMENOPHORE)
+                        .setOutputCount(4)
+                        .shapeless()
+                        .build();
+        BCLRecipeBuilder.crafting(BetterEnd.makeID("dense_snow"), EndBlocks.DENSE_SNOW)
+                        .setShape("##", "##")
+                        .addMaterial('#', Blocks.SNOW_BLOCK)
+                        .build();
+        BCLRecipeBuilder.crafting(BetterEnd.makeID("dense_snow_to_snowballs"), Items.SNOWBALL)
+                        .addMaterial('#', EndBlocks.DENSE_SNOW)
+                        .setOutputCount(16)
+                        .shapeless()
+                        .build();
 
         BCLRecipeBuilder.crafting(BetterEnd.makeID("end_stone_smelter"), EndBlocks.END_STONE_SMELTER)
                         .setShape("T#T", "V V", "T#T")

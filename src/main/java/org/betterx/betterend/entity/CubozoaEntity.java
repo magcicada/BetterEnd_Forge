@@ -22,7 +22,6 @@ import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.AbstractSchoolingFish;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -131,11 +130,7 @@ public class CubozoaEntity extends AbstractSchoolingFish {
 
     @Override
     protected void dropFromLootTable(DamageSource source, boolean causedByPlayer) {
-        int count = random.nextInt(3);
-        if (count > 0) {
-            ItemEntity drop = new ItemEntity(level(), getX(), getY(), getZ(), new ItemStack(EndItems.GELATINE, count));
-            this.level().addFreshEntity(drop);
-        }
+        super.dropFromLootTable(source, causedByPlayer);
     }
 
     @Override

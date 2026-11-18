@@ -4,6 +4,7 @@ import org.betterx.bclib.api.v2.dataexchange.DataExchangeAPI;
 import org.betterx.bclib.api.v2.generator.BiomeDecider;
 import org.betterx.bclib.api.v2.levelgen.biomes.BiomeAPI;
 import org.betterx.bclib.api.v3.levelgen.features.BCLFeature;
+import org.betterx.bclib.api.v3.levelgen.features.FeatureConfigAPI;
 import org.betterx.bclib.registry.RegistryBootstrap;
 import org.betterx.betterend.advancements.BECriteria;
 import org.betterx.betterend.api.BetterEndPlugin;
@@ -12,7 +13,6 @@ import org.betterx.betterend.config.Configs;
 import org.betterx.betterend.effects.EndPotions;
 import org.betterx.betterend.effects.EndStatusEffects;
 import org.betterx.betterend.integration.Integrations;
-import org.betterx.betterend.item.GuideBookItem;
 import org.betterx.betterend.network.RitualUpdate;
 import org.betterx.betterend.recipe.builders.InfusionRecipe;
 import org.betterx.betterend.registry.*;
@@ -75,6 +75,7 @@ public class BetterEnd {
     }
 
     public void onInitialize() {
+        FeatureConfigAPI.register(MOD_ID, Configs::isFeatureEnabled);
         WorldConfig.registerModCache(MOD_ID);
         EndNumericProviders.register();
         EndPortals.loadPortals();
@@ -140,9 +141,6 @@ public class BetterEnd {
         try {
             Class.forName("org.betterx.betterend.registry.EndItems");
         } catch (ClassNotFoundException ignored) {
-        }
-        if (Integrations.hasGuideBook()) {
-            GuideBookItem.register();
         }
         try {
             Class.forName("org.betterx.betterend.registry.EndTemplates");

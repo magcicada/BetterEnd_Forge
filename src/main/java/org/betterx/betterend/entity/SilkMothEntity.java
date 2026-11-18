@@ -32,11 +32,9 @@ import net.minecraft.world.entity.ai.util.AirAndWaterRandomPos;
 import net.minecraft.world.entity.ai.util.HoverRandomPos;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.animal.FlyingAnimal;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -163,19 +161,7 @@ public class SilkMothEntity extends Animal implements FlyingAnimal {
 
     @Override
     protected void dropFromLootTable(DamageSource source, boolean causedByPlayer) {
-        int minCount = 0;
-        int maxCount = 1;
-        if (causedByPlayer && this.lastHurtByPlayer != null) {
-            int looting = EnchantmentHelper.getMobLooting(this.lastHurtByPlayer);
-            minCount += looting;
-            maxCount += looting;
-            if (maxCount > 2) {
-                maxCount = 2;
-            }
-        }
-        int count = minCount < maxCount ? MHelper.randRange(minCount, maxCount, random) : maxCount;
-        ItemEntity drop = new ItemEntity(level(), getX(), getY(), getZ(), new ItemStack(EndItems.SILK_FIBER, count));
-        this.level().addFreshEntity(drop);
+        super.dropFromLootTable(source, causedByPlayer);
     }
 
     class MothLookControl extends LookControl {

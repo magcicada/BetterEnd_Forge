@@ -2,13 +2,12 @@ package org.betterx.betterend.registry;
 
 import org.betterx.bclib.particles.BCLParticleType;
 import org.betterx.betterend.BetterEnd;
-import org.betterx.betterend.particle.*;
+import org.betterx.betterend.particle.InfusionParticleType;
 
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.Registries;
 
-import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
 import net.minecraftforge.registries.RegisterEvent;
 
 public class EndParticles {
@@ -25,6 +24,8 @@ public class EndParticles {
     public static SimpleParticleType JUNGLE_SPORE;
     public static SimpleParticleType FIREFLY;
     public static SimpleParticleType SMARAGDANT;
+    public static SimpleParticleType INFUSION_MIST;
+    public static SimpleParticleType INFUSION_MIST_NORTH;
 
     private static boolean registered = false;
 
@@ -58,21 +59,8 @@ public class EndParticles {
         JUNGLE_SPORE = register("jungle_spore");
         FIREFLY = register("firefly");
         SMARAGDANT = register("smaragdant_particle");
-    }
-
-    public static void registerProviders(RegisterParticleProvidersEvent event) {
-        event.registerSpriteSet(GLOWING_SPHERE, ParticleGlowingSphere.FactoryGlowingSphere::new);
-        event.registerSpriteSet(PORTAL_SPHERE, PaticlePortalSphere.FactoryPortalSphere::new);
-        event.registerSpriteSet(INFUSION, InfusionParticle.InfusionFactory::new);
-        event.registerSpriteSet(SULPHUR_PARTICLE, ParticleSulphur.FactorySulphur::new);
-        event.registerSpriteSet(GEYSER_PARTICLE, ParticleGeyser.FactoryGeyser::new);
-        event.registerSpriteSet(SNOWFLAKE, ParticleSnowflake.FactorySnowflake::new);
-        event.registerSpriteSet(AMBER_SPHERE, ParticleGlowingSphere.FactoryGlowingSphere::new);
-        event.registerSpriteSet(BLACK_SPORE, ParticleBlackSpore.FactoryBlackSpore::new);
-        event.registerSpriteSet(TENANEA_PETAL, ParticleTenaneaPetal.FactoryTenaneaPetal::new);
-        event.registerSpriteSet(JUNGLE_SPORE, ParticleJungleSpore.FactoryJungleSpore::new);
-        event.registerSpriteSet(FIREFLY, FireflyParticle.FireflyParticleFactory::new);
-        event.registerSpriteSet(SMARAGDANT, SmaragdantParticle.SmaragdantParticleFactory::new);
+        INFUSION_MIST = register("infusion_mist");
+        INFUSION_MIST_NORTH = register("infusion_mist_north");
     }
 
     private static SimpleParticleType register(String name) {

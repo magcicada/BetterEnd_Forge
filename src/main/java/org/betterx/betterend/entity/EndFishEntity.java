@@ -13,11 +13,8 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.DifficultyInstance;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobSpawnType;
@@ -25,12 +22,7 @@ import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.AbstractSchoolingFish;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
-import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.Blocks;
@@ -167,17 +159,6 @@ public class EndFishEntity extends AbstractSchoolingFish {
 
     @Override
     protected void dropFromLootTable(DamageSource source, boolean causedByPlayer) {
-        Item item = source.is(DamageTypeTags.IS_FIRE) ? EndItems.END_FISH_COOKED : EndItems.END_FISH_RAW;
-        if (causedByPlayer) {
-            Entity sourceEntity = source.getEntity();
-            if (sourceEntity instanceof Player player) {
-                ItemStack handItem = player.getItemInHand(InteractionHand.MAIN_HAND);
-                if (EnchantmentHelper.getItemEnchantmentLevel(Enchantments.FIRE_ASPECT, handItem) > 0) {
-                    item = EndItems.END_FISH_COOKED;
-                }
-            }
-        }
-        ItemEntity drop = new ItemEntity(level(), getX(), getY(), getZ(), new ItemStack(item));
-        this.level().addFreshEntity(drop);
+        super.dropFromLootTable(source, causedByPlayer);
     }
 }

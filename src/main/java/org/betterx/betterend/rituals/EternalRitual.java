@@ -1,28 +1,22 @@
 package org.betterx.betterend.rituals;
 
-import org.betterx.bclib.api.v2.dataexchange.DataExchangeAPI;
-import org.betterx.bclib.blocks.BlockProperties;
-import org.betterx.betterend.BetterEnd;
-import org.betterx.betterend.advancements.BECriteria;
-import org.betterx.betterend.blocks.EndPortalBlock;
-import org.betterx.betterend.blocks.EternalPedestal;
-import org.betterx.betterend.blocks.RunedFlavolite;
-import org.betterx.betterend.blocks.basis.PedestalBlock;
-import org.betterx.betterend.blocks.entities.EternalPedestalEntity;
-import org.betterx.betterend.network.RitualUpdate;
-import org.betterx.betterend.portal.PortalBuilder;
-import org.betterx.betterend.registry.EndBlocks;
-import org.betterx.betterend.registry.EndPortals;
-
-import net.minecraft.BlockUtil;
+import java.awt.Point;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import net.minecraft.BlockUtil.FoundRectangle;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.BlockPos.MutableBlockPos;
+import net.minecraft.core.Direction.Axis;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -37,650 +31,680 @@ import net.minecraft.world.level.block.NetherPortalBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.border.WorldBorder;
-
-import java.awt.*;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import org.betterx.bclib.api.v2.dataexchange.DataExchangeAPI;
+import org.betterx.bclib.blocks.BlockProperties;
+import org.betterx.betterend.BetterEnd;
+import org.betterx.betterend.advancements.BECriteria;
+import org.betterx.betterend.blocks.EndPortalBlock;
+import org.betterx.betterend.blocks.EternalPedestal;
+import org.betterx.betterend.blocks.RunedFlavolite;
+import org.betterx.betterend.blocks.basis.PedestalBlock;
+import org.betterx.betterend.blocks.entities.EternalPedestalEntity;
+import org.betterx.betterend.network.RitualUpdate;
+import org.betterx.betterend.portal.EternalPortalLinks;
+import org.betterx.betterend.portal.PortalBuilder;
+import org.betterx.betterend.registry.EndBlocks;
+import org.betterx.betterend.registry.EndPortals;
 import org.jetbrains.annotations.Nullable;
 
 public class EternalRitual {
-    public static final int ACTIVATION_CHARGE_TICKS = 60;
-    private final static List<Point> PEDESTAL_POSITIONS = List.of(
-            new Point(-4, -5),
-            new Point(-4, 5),
-            new Point(-6, 0),
-            new Point(4, -5),
-            new Point(4, 5),
-            new Point(6, 0)
-    );
+   public static final int ACTIVATION_CHARGE_TICKS = 60;
+   private static final List<Point> PEDESTAL_POSITIONS = List.of(
+      new Point(-4, -5), new Point(-4, 5), new Point(-6, 0), new Point(4, -5), new Point(4, 5), new Point(6, 0)
+   );
+   private static final Block PEDESTAL = EndBlocks.ETERNAL_PEDESTAL;
+   public static final BooleanProperty ACTIVE = BlockProperties.ACTIVE;
+   private Level world;
+   private Axis axis;
+   private ResourceLocation targetWorldId;
+   private BlockPos center;
+   private BlockPos exit;
+   private boolean active = false;
+   private boolean willActivate = false;
+   private ResourceLocation pendingKeyItemId;
+   private BlockPos pendingStartPosition;
 
-    public static List<Point> pedestalOffsets() {
-        return PEDESTAL_POSITIONS;
-    }
+   public static List<Point> pedestalOffsets() {
+      return PEDESTAL_POSITIONS;
+   }
 
-    private final static Block PEDESTAL = EndBlocks.ETERNAL_PEDESTAL;
-    public final static BooleanProperty ACTIVE = BlockProperties.ACTIVE;
+   public EternalRitual(Level world) {
+      this.world = world;
+   }
 
-    private Level world;
-    private Direction.Axis axis;
-    private ResourceLocation targetWorldId;
-    private BlockPos center;
-    private BlockPos exit;
-    private boolean active = false;
-    private boolean willActivate = false;
-    private ResourceLocation pendingKeyItemId;
-    private BlockPos pendingStartPosition;
+   public EternalRitual(Level world, BlockPos initial) {
+      this(world);
+      this.configure(initial);
+   }
 
-    public EternalRitual(Level world) {
-        this.world = world;
-    }
+   public BlockPos getCenter() {
+      return this.center;
+   }
 
-    public EternalRitual(Level world, BlockPos initial) {
-        this(world);
-        this.configure(initial);
-    }
+   public Axis getAxis() {
+      return this.axis;
+   }
 
-    public BlockPos getCenter() {
-        return center;
-    }
+   public void setWorld(Level world) {
+      this.world = world;
+   }
 
-    public Direction.Axis getAxis() {
-        return axis;
-    }
+   public Level getWorld() {
+      return this.world;
+   }
 
-    public void setWorld(Level world) {
-        this.world = world;
-    }
+   public int getPedestalItemMask() {
+      if (this.world != null && this.center != null && this.axis != null) {
+         Direction moveX = this.axis == Axis.X ? Direction.EAST : Direction.SOUTH;
+         Direction moveY = this.axis == Axis.X ? Direction.NORTH : Direction.EAST;
+         int mask = 0;
 
-    public Level getWorld() {
-        return world;
-    }
-
-    public int getPedestalItemMask() {
-        if (world == null || center == null || axis == null) return 0;
-        Direction moveX = axis == Direction.Axis.X ? Direction.EAST : Direction.SOUTH;
-        Direction moveY = axis == Direction.Axis.X ? Direction.NORTH : Direction.EAST;
-        int mask = 0;
-        for (int i = 0; i < PEDESTAL_POSITIONS.size(); i++) {
+         for (int i = 0; i < PEDESTAL_POSITIONS.size(); i++) {
             Point offset = PEDESTAL_POSITIONS.get(i);
-            BlockPos pedestalPos = center.relative(moveX, offset.x).relative(moveY, offset.y);
-            if (world.getBlockEntity(pedestalPos) instanceof EternalPedestalEntity pedestal && !pedestal.isEmpty()) {
-                mask |= 1 << i;
+            BlockPos pedestalPos = this.center.relative(moveX, offset.x).relative(moveY, offset.y);
+            if (this.world.getBlockEntity(pedestalPos) instanceof EternalPedestalEntity pedestal && !pedestal.isEmpty()) {
+               mask |= 1 << i;
             }
-        }
-        return mask;
-    }
+         }
 
-    @Nullable
-    public ResourceLocation getTargetWorldId() {
-        return targetWorldId;
-    }
+         return mask;
+      } else {
+         return 0;
+      }
+   }
 
-    private boolean isInvalid() {
-        return world == null || world.isClientSide() || center == null || axis == null;
-    }
+   @Nullable
+   public ResourceLocation getTargetWorldId() {
+      return this.targetWorldId;
+   }
 
-    public void checkStructure(Player player) {
-        if (isInvalid()) return;
-        Direction moveX, moveY;
-        if (Direction.Axis.X == axis) {
+   private boolean isInvalid() {
+      return this.world == null || this.world.isClientSide() || this.center == null || this.axis == null;
+   }
+
+   public void checkStructure(Player player) {
+      if (!this.isInvalid()) {
+         Direction moveX;
+         Direction moveY;
+         if (Axis.X == this.axis) {
             moveX = Direction.EAST;
             moveY = Direction.NORTH;
-        } else {
+         } else {
             moveX = Direction.SOUTH;
             moveY = Direction.EAST;
-        }
-        boolean valid = checkFrame(world, center.below());
-        Item item = null;
-        for (Point pos : PEDESTAL_POSITIONS) {
-            BlockPos.MutableBlockPos checkPos = center.mutable();
+         }
+
+         boolean valid = this.checkFrame(this.world, this.center.below());
+         Item item = null;
+
+         for (Point pos : PEDESTAL_POSITIONS) {
+            MutableBlockPos checkPos = this.center.mutable();
             checkPos.move(moveX, pos.x).move(moveY, pos.y);
-            valid &= isActive(checkPos);
+            valid &= this.isActive(checkPos);
             if (valid) {
-                EternalPedestalEntity pedestal = (EternalPedestalEntity) world.getBlockEntity(checkPos);
-                if (pedestal != null) {
-                    Item pItem = pedestal.getItem(0).getItem();
-                    if (item == null) {
-                        item = pItem;
-                    } else if (!item.equals(pItem)) {
-                        valid = false;
-                    }
-                }
+               EternalPedestalEntity pedestal = (EternalPedestalEntity)this.world.getBlockEntity(checkPos);
+               if (pedestal != null) {
+                  Item pItem = pedestal.getItem(0).getItem();
+                  if (item == null) {
+                     item = pItem;
+                  } else if (!item.equals(pItem)) {
+                     valid = false;
+                  }
+               }
             }
-        }
-        if (valid && item != null) {
-            activatePortal(player, item);
+         }
+
+         if (valid && item != null) {
+            this.activatePortal(player, item);
             if (player instanceof ServerPlayer sp) {
-                BECriteria.PORTAL_ON.trigger(sp);
+               BECriteria.PORTAL_ON.trigger(sp);
             }
-        }
-    }
+         }
+      }
+   }
 
-    public void updateActiveStateOnPedestals() {
-        if (world == null) return;
-        updateActiveStateOnPedestals(center, axis, active, willActivate, world, this);
-        DataExchangeAPI.send(new RitualUpdate(this));
-    }
+   public void updateActiveStateOnPedestals() {
+      if (this.world != null) {
+         updateActiveStateOnPedestals(this.center, this.axis, this.active, this.willActivate, this.world, this);
+         DataExchangeAPI.send(new RitualUpdate(this));
+      }
+   }
 
-    public static void updateActiveStateOnPedestals(
-            BlockPos center,
-            Direction.Axis axis,
-            boolean active,
-            boolean willActivate,
-            Level world,
-            EternalRitual fallback
-    ) {
-        updateActiveStateOnPedestals(center, axis, active, willActivate, world, fallback, null, -1);
-    }
+   public static void updateActiveStateOnPedestals(BlockPos center, Axis axis, boolean active, boolean willActivate, Level world, EternalRitual fallback) {
+      updateActiveStateOnPedestals(center, axis, active, willActivate, world, fallback, null, -1);
+   }
 
-    public static void updateActiveStateOnPedestals(
-            BlockPos center,
-            Direction.Axis axis,
-            boolean active,
-            boolean willActivate,
-            Level world,
-            EternalRitual fallback,
-            Item clientKeyItem,
-            int pedestalItemMask
-    ) {
-        Direction moveX, moveY;
-        if (Direction.Axis.X == axis) {
-            moveX = Direction.EAST;
-            moveY = Direction.NORTH;
-        } else {
-            moveX = Direction.SOUTH;
-            moveY = Direction.EAST;
-        }
+   public static void updateActiveStateOnPedestals(
+      BlockPos center, Axis axis, boolean active, boolean willActivate, Level world, EternalRitual fallback, Item clientKeyItem, int pedestalItemMask
+   ) {
+      Direction moveX;
+      Direction moveY;
+      if (Axis.X == axis) {
+         moveX = Direction.EAST;
+         moveY = Direction.NORTH;
+      } else {
+         moveX = Direction.SOUTH;
+         moveY = Direction.EAST;
+      }
 
+      for (int pedestalIndex = 0; pedestalIndex < PEDESTAL_POSITIONS.size(); pedestalIndex++) {
+         Point pos = PEDESTAL_POSITIONS.get(pedestalIndex);
+         MutableBlockPos checkPos = center.mutable();
+         checkPos.move(moveX, pos.x).move(moveY, pos.y);
+         if (world.getBlockEntity(checkPos) instanceof EternalPedestalEntity pedestal) {
+            if (world.isClientSide() && pedestalItemMask >= 0) {
+               boolean hasItem = (pedestalItemMask & 1 << pedestalIndex) != 0;
+               pedestal.setClientItem(hasItem && clientKeyItem != null ? new ItemStack(clientKeyItem) : ItemStack.EMPTY);
+               BlockState state = world.getBlockState(checkPos);
+               if (state.is(PEDESTAL)) {
+                  state = (BlockState)state.setValue(PedestalBlock.HAS_ITEM, hasItem);
+                  if (!hasItem) {
+                     state = (BlockState)((BlockState)state.setValue(PedestalBlock.HAS_LIGHT, false)).setValue(EternalPedestal.ACTIVATED, false);
+                  } else if (active || willActivate) {
+                     state = (BlockState)((BlockState)state.setValue(PedestalBlock.HAS_LIGHT, true)).setValue(EternalPedestal.ACTIVATED, true);
+                  }
 
-        for (int pedestalIndex = 0; pedestalIndex < PEDESTAL_POSITIONS.size(); pedestalIndex++) {
-            Point pos = PEDESTAL_POSITIONS.get(pedestalIndex);
-            BlockPos.MutableBlockPos checkPos = center.mutable();
-            checkPos.move(moveX, pos.x).move(moveY, pos.y);
-            if (world.getBlockEntity(checkPos) instanceof EternalPedestalEntity pedestal) {
-                if (world.isClientSide() && pedestalItemMask >= 0) {
-                    boolean hasItem = (pedestalItemMask & (1 << pedestalIndex)) != 0;
-                    pedestal.setClientItem(hasItem && clientKeyItem != null ? new ItemStack(clientKeyItem) : ItemStack.EMPTY);
-                    BlockState state = world.getBlockState(checkPos);
-                    if (state.is(PEDESTAL)) {
-                        state = state.setValue(PedestalBlock.HAS_ITEM, hasItem);
-                        if (!hasItem) {
-                            state = state.setValue(PedestalBlock.HAS_LIGHT, false)
-                                         .setValue(EternalPedestal.ACTIVATED, false);
-                        } else if (active || willActivate) {
-                            state = state.setValue(PedestalBlock.HAS_LIGHT, true)
-                                         .setValue(EternalPedestal.ACTIVATED, true);
-                        }
-                        world.setBlockAndUpdate(checkPos, state);
-                    }
-                }
-                if (pedestal.hasRitual()) {
-                    if (fallback == null) fallback = pedestal.getRitual();
-                    pedestal.getRitual().active = active;
-                    pedestal.getRitual().willActivate = willActivate;
-                } else {
-                    if (fallback == null) {
-                        fallback = new EternalRitual(world);
-                        fallback.center = center;
-                        fallback.axis = axis;
-                        fallback.willActivate = willActivate;
-                        fallback.active = active;
-                    }
-                    pedestal.linkRitual(fallback);
-                }
+                  world.setBlockAndUpdate(checkPos, state);
+               }
             }
-        }
-    }
 
-    @Nullable
-    public Item getKeyItem() {
-        if (world == null || center == null || axis == null) return null;
-        Direction moveX = axis == Direction.Axis.X ? Direction.EAST : Direction.SOUTH;
-        Direction moveY = axis == Direction.Axis.X ? Direction.NORTH : Direction.EAST;
-        for (Point pos : PEDESTAL_POSITIONS) {
-            BlockPos checkPos = center.relative(moveX, pos.x).relative(moveY, pos.y);
-            if (world.getBlockEntity(checkPos) instanceof EternalPedestalEntity pedestal
-                    && !pedestal.isEmpty()) {
-                return pedestal.getItem(0).getItem();
+            if (fallback == null) {
+               fallback = pedestal.hasRitual() ? pedestal.getRitual() : new EternalRitual(world);
             }
-        }
-        return null;
-    }
 
-    private boolean checkFrame(Level world, BlockPos framePos) {
-        Direction moveDir = Direction.Axis.X == axis ? Direction.NORTH : Direction.EAST;
-        boolean valid = true;
-        for (Point point : PortalBuilder.FRAME_POSITIONS) {
-            BlockPos pos = framePos.mutable().move(moveDir, point.x).move(Direction.UP, point.y);
-            BlockState state = world.getBlockState(pos);
-            valid &= state.getBlock() instanceof RunedFlavolite;
-            pos = framePos.mutable().move(moveDir, -point.x).move(Direction.UP, point.y);
-            state = world.getBlockState(pos);
-            valid &= state.getBlock() instanceof RunedFlavolite;
-        }
-        return valid;
-    }
+            fallback.world = world;
+            fallback.center = center;
+            fallback.axis = axis;
+            fallback.active = active;
+            fallback.willActivate = willActivate;
+            pedestal.linkRitual(fallback);
+         }
+      }
+   }
 
-    public boolean isActive() {
-        return active;
-    }
+   @Nullable
+   public Item getKeyItem() {
+      if (this.world != null && this.center != null && this.axis != null) {
+         Direction moveX = this.axis == Axis.X ? Direction.EAST : Direction.SOUTH;
+         Direction moveY = this.axis == Axis.X ? Direction.NORTH : Direction.EAST;
 
-    public boolean willActivate() {
-        return willActivate;
-    }
-
-    private void activatePortal(Player player, Item keyItem) {
-        if (active || willActivate) return;
-        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(keyItem);
-        int portalId = EndPortals.getPortalIdByItem(itemId);
-        Level targetWorld = getTargetWorld(portalId);
-        pendingKeyItemId = itemId;
-        pendingStartPosition = PortalBuilder.getStartingPos(world, targetWorld, player, targetWorld.getWorldBorder());
-        willActivate = true;
-        updateActiveStateOnPedestals();
-        world.scheduleTick(getActivationPedestalPos(), PEDESTAL, ACTIVATION_CHARGE_TICKS);
-    }
-
-    public void finishActivation() {
-        if (!willActivate || active || isInvalid() || pendingKeyItemId == null || pendingStartPosition == null) return;
-        Item keyItem = getKeyItem();
-        if (keyItem == null || !pendingKeyItemId.equals(BuiltInRegistries.ITEM.getKey(keyItem)) || !hasValidStructureFor(keyItem)) {
-            cancelActivation();
-            return;
-        }
-        int portalId = EndPortals.getPortalIdByItem(pendingKeyItemId);
-        Level targetWorld = getTargetWorld(portalId);
-        ResourceLocation worldId = targetWorld.dimension().location();
-        try {
-            if (exit == null) {
-                initPortal(pendingStartPosition, worldId, portalId);
-            } else {
-                if (!worldId.equals(targetWorldId)) {
-                    initPortal(pendingStartPosition, worldId, portalId);
-                } else if (!checkFrame(targetWorld, exit.below())) {
-                    Direction.Axis portalAxis = (Direction.Axis.X == axis) ? Direction.Axis.Z : Direction.Axis.X;
-                    PortalBuilder.generatePortal(targetWorld, exit, portalAxis, portalId);
-                }
-                activatePortal(targetWorld, exit, portalId);
+         for (Point pos : PEDESTAL_POSITIONS) {
+            BlockPos checkPos = this.center.relative(moveX, pos.x).relative(moveY, pos.y);
+            if (this.world.getBlockEntity(checkPos) instanceof EternalPedestalEntity pedestal && !pedestal.isEmpty()) {
+               return pedestal.getItem(0).getItem();
             }
-            activatePortal(world, center, portalId);
-            if (world instanceof ServerLevel serverLevel) {
-                doEffects(serverLevel, center);
+         }
+
+         return null;
+      } else {
+         return null;
+      }
+   }
+
+   private boolean checkFrame(Level world, BlockPos framePos) {
+      Direction moveDir = Axis.X == this.axis ? Direction.NORTH : Direction.EAST;
+      boolean valid = true;
+
+      for (Point point : PortalBuilder.FRAME_POSITIONS) {
+         BlockPos pos = framePos.mutable().move(moveDir, point.x).move(Direction.UP, point.y);
+         BlockState state = world.getBlockState(pos);
+         valid &= state.getBlock() instanceof RunedFlavolite;
+         pos = framePos.mutable().move(moveDir, -point.x).move(Direction.UP, point.y);
+         state = world.getBlockState(pos);
+         valid &= state.getBlock() instanceof RunedFlavolite;
+      }
+
+      return valid;
+   }
+
+   public boolean isActive() {
+      return this.active;
+   }
+
+   public boolean willActivate() {
+      return this.willActivate;
+   }
+
+   private void activatePortal(Player player, Item keyItem) {
+      if (!this.active && !this.willActivate) {
+         ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(keyItem);
+         int portalId = EndPortals.getPortalIdByItem(itemId);
+         Level targetWorld = this.getTargetWorld(portalId);
+         this.pendingKeyItemId = itemId;
+         this.pendingStartPosition = PortalBuilder.getStartingPos(this.world, targetWorld, player, targetWorld.getWorldBorder());
+         this.willActivate = true;
+         this.updateActiveStateOnPedestals();
+         this.world.scheduleTick(this.getActivationPedestalPos(), PEDESTAL, 60);
+      }
+   }
+
+   public void finishActivation() {
+      if (this.willActivate && !this.active && !this.isInvalid() && this.pendingKeyItemId != null && this.pendingStartPosition != null) {
+         Item keyItem = this.getKeyItem();
+         if (keyItem != null && this.pendingKeyItemId.equals(BuiltInRegistries.ITEM.getKey(keyItem)) && this.hasValidStructureFor(keyItem)) {
+            int portalId = EndPortals.getPortalIdByItem(this.pendingKeyItemId);
+            Level targetWorld = this.getTargetWorld(portalId);
+            ResourceLocation worldId = targetWorld.dimension().location();
+
+            try {
+               if (this.exit == null) {
+                  this.initPortal(this.pendingStartPosition, worldId, portalId);
+               } else {
+                  if (!worldId.equals(this.targetWorldId)) {
+                     this.initPortal(this.pendingStartPosition, worldId, portalId);
+                  } else if (!this.checkFrame(targetWorld, this.exit.below())) {
+                     Axis portalAxis = Axis.X == this.axis ? Axis.Z : Axis.X;
+                     PortalBuilder.generatePortal(targetWorld, this.exit, portalAxis, portalId);
+                  }
+
+                  this.activatePortal(targetWorld, this.exit, portalId);
+               }
+
+               this.activatePortal(this.world, this.center, portalId);
+               if (this.world instanceof ServerLevel serverLevel) {
+                  this.doEffects(serverLevel, this.center);
+               }
+
+               this.willActivate = false;
+               this.active = true;
+               this.clearPendingActivation();
+               this.registerLinks();
+               this.updateActiveStateOnPedestals();
+            } catch (Exception var7) {
+               BetterEnd.LOGGER.error("Create End portals error.", var7);
+               this.removePortal(targetWorld, this.exit);
+               this.removePortal(this.world, this.center);
+               this.willActivate = false;
+               this.active = false;
+               this.clearPendingActivation();
+               this.updateActiveStateOnPedestals();
             }
-            willActivate = false;
-            active = true;
-            clearPendingActivation();
-            updateActiveStateOnPedestals();
-        } catch (Exception ex) {
-            BetterEnd.LOGGER.error("Create End portals error.", ex);
-            removePortal(targetWorld, exit);
-            removePortal(world, center);
-            willActivate = false;
-            active = false;
-            clearPendingActivation();
-            updateActiveStateOnPedestals();
-        }
-    }
+         } else {
+            this.cancelActivation();
+         }
+      }
+   }
 
-    public void cancelActivation() {
-        if (!willActivate) return;
-        willActivate = false;
-        clearPendingActivation();
-        updateActiveStateOnPedestals();
-    }
+   public void cancelActivation() {
+      if (this.willActivate) {
+         this.willActivate = false;
+         this.clearPendingActivation();
+         this.updateActiveStateOnPedestals();
+      }
+   }
 
-    private void clearPendingActivation() { pendingKeyItemId = null; pendingStartPosition = null; }
+   private void clearPendingActivation() {
+      this.pendingKeyItemId = null;
+      this.pendingStartPosition = null;
+   }
 
-    private BlockPos getActivationPedestalPos() {
-        Direction moveX = axis == Direction.Axis.X ? Direction.EAST : Direction.SOUTH;
-        Direction moveY = axis == Direction.Axis.X ? Direction.NORTH : Direction.EAST;
-        Point offset = PEDESTAL_POSITIONS.get(0);
-        return center.relative(moveX, offset.x).relative(moveY, offset.y);
-    }
+   private BlockPos getActivationPedestalPos() {
+      Direction moveX = this.axis == Axis.X ? Direction.EAST : Direction.SOUTH;
+      Direction moveY = this.axis == Axis.X ? Direction.NORTH : Direction.EAST;
+      Point offset = PEDESTAL_POSITIONS.get(0);
+      return this.center.relative(moveX, offset.x).relative(moveY, offset.y);
+   }
 
-    private boolean hasValidStructureFor(Item keyItem) {
-        if (!checkFrame(world, center.below())) return false;
-        Direction moveX = axis == Direction.Axis.X ? Direction.EAST : Direction.SOUTH;
-        Direction moveY = axis == Direction.Axis.X ? Direction.NORTH : Direction.EAST;
-        for (Point offset : PEDESTAL_POSITIONS) {
-            BlockPos pedestalPos = center.relative(moveX, offset.x).relative(moveY, offset.y);
-            if (!isActive(pedestalPos) || !(world.getBlockEntity(pedestalPos) instanceof EternalPedestalEntity pedestal) || pedestal.isEmpty() || pedestal.getItem(0).getItem() != keyItem) return false;
-        }
-        return true;
-    }
+   private boolean hasValidStructureFor(Item keyItem) {
+      if (!this.checkFrame(this.world, this.center.below())) {
+         return false;
+      } else {
+         Direction moveX = this.axis == Axis.X ? Direction.EAST : Direction.SOUTH;
+         Direction moveY = this.axis == Axis.X ? Direction.NORTH : Direction.EAST;
 
-    private void initPortal(BlockPos startPosition, ResourceLocation worldId, int portalId) {
-        targetWorldId = worldId;
-        if (world instanceof ServerLevel sourceWorld) {
-            ServerLevel targetLevel = (ServerLevel) getTargetWorld(portalId);
-            PortalBuilder builder = new PortalBuilder(world, targetLevel);
-            final WorldBorder worldBorder = targetLevel.getWorldBorder();
-            final Optional<BlockUtil.FoundRectangle> foundRectangle = builder.findPortalAround(
-                    this.center,
-                    worldBorder
-            );
-
-            if (!foundRectangle.isPresent()) {
-                Optional<BlockPos> centerPos;
-                centerPos = builder.createPortal(
-                        startPosition,
-                        axis,
-                        portalId
-                );
-                centerPos.ifPresent(blockPos -> this.exit = blockPos);
+         for (Point offset : PEDESTAL_POSITIONS) {
+            BlockPos pedestalPos = this.center.relative(moveX, offset.x).relative(moveY, offset.y);
+            if (!this.isActive(pedestalPos)
+               || !(this.world.getBlockEntity(pedestalPos) instanceof EternalPedestalEntity pedestal)
+               || pedestal.isEmpty()
+               || pedestal.getItem(0).getItem() != keyItem) {
+               return false;
             }
-        }
-    }
+         }
 
-    private void doEffects(ServerLevel serverWorld, BlockPos center) {
-        Direction moveX, moveY;
-        if (Direction.Axis.X == axis) {
-            moveX = Direction.EAST;
-            moveY = Direction.NORTH;
-        } else {
-            moveX = Direction.SOUTH;
-            moveY = Direction.EAST;
-        }
-        for (Point pos : PEDESTAL_POSITIONS) {
-            BlockPos.MutableBlockPos p = center.mutable();
-            p.move(moveX, pos.x).move(moveY, pos.y);
-            serverWorld.sendParticles(
-                    ParticleTypes.PORTAL,
-                    p.getX() + 0.5, p.getY() + 1.5, p.getZ() + 0.5,
-                    20,
-                    0, 0, 0, 1
-            );
-            serverWorld.sendParticles(
-                    ParticleTypes.REVERSE_PORTAL,
-                    p.getX() + 0.5, p.getY() + 1.5, p.getZ() + 0.5,
-                    20,
-                    0, 0, 0, 0.3
-            );
-        }
-        serverWorld.playSound(null, center, SoundEvents.END_PORTAL_SPAWN, SoundSource.NEUTRAL, 16, 1);
-    }
+         return true;
+      }
+   }
 
-    private void activatePortal(Level world, BlockPos center, int portalId) {
-        BlockPos framePos = center.below();
-        Direction moveDir = Direction.Axis.X == axis ? Direction.NORTH : Direction.EAST;
-        BlockState frame = PortalBuilder.FRAME.defaultBlockState().setValue(ACTIVE, true);
-        PortalBuilder.FRAME_POSITIONS.forEach(point -> {
-            BlockPos pos = framePos.mutable().move(moveDir, point.x).move(Direction.UP, point.y);
-            BlockState state = world.getBlockState(pos);
-            if (state.hasProperty(ACTIVE) && !state.getValue(ACTIVE)) {
-                world.setBlockAndUpdate(pos, frame);
-            }
-            pos = framePos.mutable().move(moveDir, -point.x).move(Direction.UP, point.y);
-            state = world.getBlockState(pos);
-            if (state.hasProperty(ACTIVE) && !state.getValue(ACTIVE)) {
-                world.setBlockAndUpdate(pos, frame);
-            }
-        });
-        Direction.Axis portalAxis = Direction.Axis.X == axis ? Direction.Axis.Z : Direction.Axis.X;
-        BlockState portal = PortalBuilder.PORTAL.defaultBlockState()
-                                                .setValue(EndPortalBlock.AXIS, portalAxis)
-                                                .setValue(EndPortalBlock.PORTAL, portalId);
-        ParticleOptions effect = new BlockParticleOption(ParticleTypes.BLOCK, portal);
-        if (world instanceof ServerLevel serverWorld) {
-            PortalBuilder.PORTAL_POSITIONS.forEach(point -> {
-                BlockPos pos = center.mutable().move(moveDir, point.x).move(Direction.UP, point.y);
-                if (!world.getBlockState(pos).is(PortalBuilder.PORTAL)) {
-                    world.setBlockAndUpdate(pos, portal);
-                    serverWorld.sendParticles(
-                            effect,
-                            pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
-                            10,
-                            0.5, 0.5, 0.5, 0.1
-                    );
-                    serverWorld.sendParticles(
-                            ParticleTypes.REVERSE_PORTAL,
-                            pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
-                            10,
-                            0.5, 0.5, 0.5, 0.3
-                    );
-                }
-                pos = center.mutable().move(moveDir, -point.x).move(Direction.UP, point.y);
-                if (!world.getBlockState(pos).is(PortalBuilder.PORTAL)) {
-                    world.setBlockAndUpdate(pos, portal);
-                    serverWorld.sendParticles(
-                            effect,
-                            pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
-                            10,
-                            0.5, 0.5, 0.5, 0.1
-                    );
-                    serverWorld.sendParticles(
-                            ParticleTypes.REVERSE_PORTAL,
-                            pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
-                            10,
-                            0.5, 0.5, 0.5, 0.3
-                    );
-                }
+   private void initPortal(BlockPos startPosition, ResourceLocation worldId, int portalId) {
+      this.targetWorldId = worldId;
+      if (this.world instanceof ServerLevel sourceWorld) {
+         ServerLevel targetLevel = (ServerLevel)this.getTargetWorld(portalId);
+         PortalBuilder builder = new PortalBuilder(this.world, targetLevel);
+         WorldBorder worldBorder = targetLevel.getWorldBorder();
+         Optional<FoundRectangle> foundRectangle = builder.findPortalAround(startPosition, worldBorder);
+         if (foundRectangle.isPresent()) {
+            this.exit = builder.getPortalCenter(foundRectangle.get());
+         } else {
+            Optional<BlockPos> centerPos = builder.createPortal(startPosition, this.axis, portalId);
+            centerPos.ifPresent(blockPos -> this.exit = blockPos);
+         }
+      }
+   }
 
-            });
-        }
-    }
+   private void doEffects(ServerLevel serverWorld, BlockPos center) {
+      Direction moveX;
+      Direction moveY;
+      if (Axis.X == this.axis) {
+         moveX = Direction.EAST;
+         moveY = Direction.NORTH;
+      } else {
+         moveX = Direction.SOUTH;
+         moveY = Direction.EAST;
+      }
 
-    public void disablePortal(int state) {
-        if (!active || isInvalid()) return;
-        if (!world.isClientSide())
-            removePortal(getTargetWorld(state), exit);
-        removePortal(world, center);
-    }
+      for (Point pos : PEDESTAL_POSITIONS) {
+         MutableBlockPos p = center.mutable();
+         p.move(moveX, pos.x).move(moveY, pos.y);
+         serverWorld.sendParticles(ParticleTypes.PORTAL, p.getX() + 0.5, p.getY() + 1.5, p.getZ() + 0.5, 20, 0.0, 0.0, 0.0, 1.0);
+         serverWorld.sendParticles(ParticleTypes.REVERSE_PORTAL, p.getX() + 0.5, p.getY() + 1.5, p.getZ() + 0.5, 20, 0.0, 0.0, 0.0, 0.3);
+      }
 
-    private void removePortal(Level world, BlockPos center) {
-        BlockPos framePos = center.below();
-        Direction moveDir = Direction.Axis.X == axis ? Direction.NORTH : Direction.EAST;
-        PortalBuilder.FRAME_POSITIONS.forEach(point -> {
-            BlockPos pos = framePos.mutable().move(moveDir, point.x).move(Direction.UP, point.y);
-            BlockState state = world.getBlockState(pos);
-            if (state.is(PortalBuilder.FRAME) && state.getValue(ACTIVE)) {
-                world.setBlockAndUpdate(pos, state.setValue(ACTIVE, false));
-            }
-            pos = framePos.mutable().move(moveDir, -point.x).move(Direction.UP, point.y);
-            state = world.getBlockState(pos);
-            if (state.is(PortalBuilder.FRAME) && state.getValue(ACTIVE)) {
-                world.setBlockAndUpdate(pos, state.setValue(ACTIVE, false));
-            }
-        });
-        PortalBuilder.PORTAL_POSITIONS.forEach(point -> {
+      serverWorld.playSound(null, center, SoundEvents.END_PORTAL_SPAWN, SoundSource.NEUTRAL, 16.0F, 1.0F);
+   }
+
+   private void activatePortal(Level world, BlockPos center, int portalId) {
+      BlockPos framePos = center.below();
+      Direction moveDir = Axis.X == this.axis ? Direction.NORTH : Direction.EAST;
+      BlockState frame = (BlockState)PortalBuilder.FRAME.defaultBlockState().setValue(ACTIVE, true);
+      PortalBuilder.FRAME_POSITIONS.forEach(point -> {
+         BlockPos pos = framePos.mutable().move(moveDir, point.x).move(Direction.UP, point.y);
+         BlockState state = world.getBlockState(pos);
+         if (state.hasProperty(ACTIVE) && !(Boolean)state.getValue(ACTIVE)) {
+            world.setBlockAndUpdate(pos, frame);
+         }
+
+         pos = framePos.mutable().move(moveDir, -point.x).move(Direction.UP, point.y);
+         state = world.getBlockState(pos);
+         if (state.hasProperty(ACTIVE) && !(Boolean)state.getValue(ACTIVE)) {
+            world.setBlockAndUpdate(pos, frame);
+         }
+      });
+      Axis portalAxis = Axis.X == this.axis ? Axis.Z : Axis.X;
+      BlockState portal = (BlockState)((BlockState)PortalBuilder.PORTAL.defaultBlockState().setValue(EndPortalBlock.AXIS, portalAxis))
+         .setValue(EndPortalBlock.PORTAL, portalId);
+      ParticleOptions effect = new BlockParticleOption(ParticleTypes.BLOCK, portal);
+      if (world instanceof ServerLevel serverWorld) {
+         PortalBuilder.PORTAL_POSITIONS.forEach(point -> {
             BlockPos pos = center.mutable().move(moveDir, point.x).move(Direction.UP, point.y);
-            if (world.getBlockState(pos).is(PortalBuilder.PORTAL)) {
-                world.removeBlock(pos, false);
+            if (!world.getBlockState(pos).is(PortalBuilder.PORTAL)) {
+               world.setBlockAndUpdate(pos, portal);
+               serverWorld.sendParticles(effect, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 10, 0.5, 0.5, 0.5, 0.1);
+               serverWorld.sendParticles(ParticleTypes.REVERSE_PORTAL, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 10, 0.5, 0.5, 0.5, 0.3);
             }
+
             pos = center.mutable().move(moveDir, -point.x).move(Direction.UP, point.y);
-            if (world.getBlockState(pos).is(PortalBuilder.PORTAL)) {
-                world.removeBlock(pos, false);
+            if (!world.getBlockState(pos).is(PortalBuilder.PORTAL)) {
+               world.setBlockAndUpdate(pos, portal);
+               serverWorld.sendParticles(effect, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 10, 0.5, 0.5, 0.5, 0.1);
+               serverWorld.sendParticles(ParticleTypes.REVERSE_PORTAL, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 10, 0.5, 0.5, 0.5, 0.3);
             }
-        });
-        this.active = false;
-        updateActiveStateOnPedestals();
-    }
+         });
+      }
+   }
 
-    private Level getTargetWorld(int state) {
-        if (world.dimension() == Level.END) {
-            return EndPortals.getWorld(world.getServer(), state);
-        }
-        return Objects.requireNonNull(world.getServer()).getLevel(Level.END);
-    }
+   public void disablePortal(int state) {
+      if (this.active && !this.isInvalid()) {
+         if (!this.world.isClientSide()) {
+            Level targetWorld = this.getTargetWorld(state);
+            if (this.world instanceof ServerLevel sourceLevel) {
+               EternalPortalLinks.unlink(sourceLevel, this.center, targetWorld instanceof ServerLevel targetLevel ? targetLevel : null, this.exit);
+            }
 
-    public void configure(BlockPos initial) {
-        BlockPos checkPos = initial.east(12);
-        if (this.hasPedestal(checkPos)) {
-            this.axis = Direction.Axis.X;
-            this.center = initial.east(6);
-            return;
-        }
-        checkPos = initial.west(12);
-        if (this.hasPedestal(checkPos)) {
-            this.axis = Direction.Axis.X;
-            this.center = initial.west(6);
-            return;
-        }
-        checkPos = initial.south(12);
-        if (this.hasPedestal(checkPos)) {
-            this.axis = Direction.Axis.Z;
-            this.center = initial.south(6);
-            return;
-        }
-        checkPos = initial.north(12);
-        if (this.hasPedestal(checkPos)) {
-            this.axis = Direction.Axis.Z;
-            this.center = initial.north(6);
-            return;
-        }
-        checkPos = initial.north(10);
-        if (this.hasPedestal(checkPos)) {
-            this.axis = Direction.Axis.X;
-            checkPos = checkPos.east(8);
-            if (this.hasPedestal(checkPos)) {
-                this.center = initial.north(5).east(4);
+            this.removePortal(targetWorld, this.exit);
+         }
+
+         this.removePortal(this.world, this.center);
+      }
+   }
+
+   private void removePortal(Level world, BlockPos center) {
+      BlockPos framePos = center.below();
+      Direction moveDir = Axis.X == this.axis ? Direction.NORTH : Direction.EAST;
+      PortalBuilder.FRAME_POSITIONS.forEach(point -> {
+         BlockPos pos = framePos.mutable().move(moveDir, point.x).move(Direction.UP, point.y);
+         BlockState state = world.getBlockState(pos);
+         if (state.is(PortalBuilder.FRAME) && (Boolean)state.getValue(ACTIVE)) {
+            world.setBlockAndUpdate(pos, (BlockState)state.setValue(ACTIVE, false));
+         }
+
+         pos = framePos.mutable().move(moveDir, -point.x).move(Direction.UP, point.y);
+         state = world.getBlockState(pos);
+         if (state.is(PortalBuilder.FRAME) && (Boolean)state.getValue(ACTIVE)) {
+            world.setBlockAndUpdate(pos, (BlockState)state.setValue(ACTIVE, false));
+         }
+      });
+      PortalBuilder.PORTAL_POSITIONS.forEach(point -> {
+         BlockPos pos = center.mutable().move(moveDir, point.x).move(Direction.UP, point.y);
+         if (world.getBlockState(pos).is(PortalBuilder.PORTAL)) {
+            world.removeBlock(pos, false);
+         }
+
+         pos = center.mutable().move(moveDir, -point.x).move(Direction.UP, point.y);
+         if (world.getBlockState(pos).is(PortalBuilder.PORTAL)) {
+            world.removeBlock(pos, false);
+         }
+      });
+      this.active = false;
+      this.updateActiveStateOnPedestals();
+   }
+
+   @Nullable
+   public EternalPortalLinks.Link registerLinks() {
+      if (this.active && this.center != null && this.exit != null && this.targetWorldId != null) {
+         if (this.world instanceof ServerLevel sourceLevel) {
+            ServerLevel targetLevel = sourceLevel.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, this.targetWorldId));
+            if (targetLevel != null && targetLevel != sourceLevel) {
+               EternalPortalLinks.link(sourceLevel, this.center, targetLevel, this.exit);
+               return new EternalPortalLinks.Link(targetLevel.dimension(), this.exit);
             } else {
-                this.center = initial.north(5).west(4);
+               return null;
             }
-            return;
-        }
-        checkPos = initial.south(10);
-        if (this.hasPedestal(checkPos)) {
-            this.axis = Direction.Axis.X;
-            checkPos = checkPos.east(8);
-            if (this.hasPedestal(checkPos)) {
-                this.center = initial.south(5).east(4);
-            } else {
-                this.center = initial.south(5).west(4);
-            }
-            return;
-        }
-        checkPos = initial.east(10);
-        if (this.hasPedestal(checkPos)) {
-            this.axis = Direction.Axis.Z;
-            checkPos = checkPos.south(8);
-            if (this.hasPedestal(checkPos)) {
-                this.center = initial.east(5).south(4);
-            } else {
-                this.center = initial.east(5).north(4);
-            }
-            return;
-        }
-        checkPos = initial.west(10);
-        if (this.hasPedestal(checkPos)) {
-            this.axis = Direction.Axis.Z;
-            checkPos = checkPos.south(8);
-            if (this.hasPedestal(checkPos)) {
-                this.center = initial.west(5).south(4);
-            } else {
-                this.center = initial.west(5).north(4);
-            }
-        }
-    }
-
-    private boolean hasPedestal(BlockPos pos) {
-        return world.getBlockState(pos).is(PEDESTAL);
-    }
-
-    private boolean isActive(BlockPos pos) {
-        BlockState state = world.getBlockState(pos);
-        if (state.is(PEDESTAL)) {
-            EternalPedestalEntity pedestal = (EternalPedestalEntity) world.getBlockEntity(pos);
-            if (pedestal != null) {
-                if (!pedestal.hasRitual()) {
-                    pedestal.linkRitual(this);
-                } else {
-                    EternalRitual ritual = pedestal.getRitual();
-                    if (!ritual.equals(this)) {
-                        pedestal.linkRitual(this);
-                    }
-                }
-            }
-            return state.getValue(ACTIVE);
-        }
-        return false;
-    }
-
-    public CompoundTag toTag(CompoundTag tag) {
-        if (this.center == null || this.axis == null) return null;
-        tag.put("center", NbtUtils.writeBlockPos(center));
-        tag.putString("axis", axis.getName());
-        tag.putBoolean("active", active);
-        tag.putBoolean("will_activate", willActivate);
-        if (pendingKeyItemId != null) tag.putString("pending_key_item", pendingKeyItemId.toString());
-        if (pendingStartPosition != null) tag.put("pending_start", NbtUtils.writeBlockPos(pendingStartPosition));
-        if (targetWorldId != null) {
-            tag.putString("key_item", targetWorldId.toString());
-        }
-        if (exit != null) {
-            tag.put("exit", NbtUtils.writeBlockPos(exit));
-        }
-        return tag;
-    }
-
-    public void fromTag(CompoundTag tag) {
-        axis = Direction.Axis.byName(tag.getString("axis"));
-        center = NbtUtils.readBlockPos(tag.getCompound("center"));
-        active = tag.getBoolean("active");
-        willActivate = tag.getBoolean("will_activate");
-        if (tag.contains("pending_key_item")) pendingKeyItemId = new ResourceLocation(tag.getString("pending_key_item"));
-        if (tag.contains("pending_start")) pendingStartPosition = NbtUtils.readBlockPos(tag.getCompound("pending_start"));
-        if (tag.contains("exit")) {
-            exit = NbtUtils.readBlockPos(tag.getCompound("exit"));
-        }
-        if (tag.contains("key_item")) {
-            targetWorldId = new ResourceLocation(tag.getString("key_item"));
-        }
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        EternalRitual ritual = (EternalRitual) o;
-        return world.equals(ritual.world) && Objects.equals(center, ritual.center) && Objects.equals(exit, ritual.exit);
-    }
-
-    public static EternalRitual findRitualForActivePortal(Level world, BlockPos startPos) {
-        BlockState state = world.getBlockState(startPos);
-
-        if (isActivePortalBlock(state)) {
-            final var direction = state.getValue(NetherPortalBlock.AXIS) == Direction.Axis.X
-                    ? Direction.EAST
-                    : Direction.NORTH;
-            while (world.getBlockState(startPos.below()).is(EndBlocks.END_PORTAL_BLOCK)) {
-                startPos = startPos.below();
-            }
-
-            // X O O O O O X
-            // X O O O O O X
-            // X a c O c b X
-            //   X a O b X
-            //     X X X
-
-
-            if (world.getBlockState(startPos.relative(direction, -1)).is(EndBlocks.FLAVOLITE_RUNED_ETERNAL))
-                startPos = startPos.relative(direction, 1); //pos (a)
-            else if (world.getBlockState(startPos.relative(direction, 1)).is(EndBlocks.FLAVOLITE_RUNED_ETERNAL))
-                startPos = startPos.relative(direction, -1); //pos (b)
-
-            if (!world.getBlockState(startPos.below()).is(EndBlocks.FLAVOLITE_RUNED_ETERNAL))
-                startPos = startPos.below(); //pos (c)
-
-            if (world.getBlockState(startPos.relative(direction, -1)).is(EndBlocks.FLAVOLITE_RUNED_ETERNAL))
-                startPos = startPos.relative(direction, 1); //pos (a)
-            else if (world.getBlockState(startPos.relative(direction, 1)).is(EndBlocks.FLAVOLITE_RUNED_ETERNAL))
-                startPos = startPos.relative(direction, -1); //pos (b)
-
-            startPos = startPos.relative(direction.getClockWise(), 6);
-            state = world.getBlockState(startPos);
-            if (state.is(EndBlocks.ETERNAL_PEDESTAL) && world.getBlockEntity(startPos) instanceof EternalPedestalEntity pedestal) {
-                return pedestal.getRitual();
-            }
+         } else {
             return null;
-        }
+         }
+      } else {
+         return null;
+      }
+   }
 
-        return null;
-    }
+   private Level getTargetWorld(int state) {
+      return this.world.dimension() == Level.END
+         ? EndPortals.getWorld(this.world.getServer(), state)
+         : Objects.requireNonNull(this.world.getServer()).getLevel(Level.END);
+   }
 
-    private static boolean isActivePortalBlock(BlockState state) {
-        return state.is(EndBlocks.END_PORTAL_BLOCK)
-                && state.hasProperty(NetherPortalBlock.AXIS);
-    }
+   public void configure(BlockPos initial) {
+      BlockPos checkPos = initial.east(12);
+      if (this.hasPedestal(checkPos)) {
+         this.axis = Axis.X;
+         this.center = initial.east(6);
+      } else {
+         checkPos = initial.west(12);
+         if (this.hasPedestal(checkPos)) {
+            this.axis = Axis.X;
+            this.center = initial.west(6);
+         } else {
+            checkPos = initial.south(12);
+            if (this.hasPedestal(checkPos)) {
+               this.axis = Axis.Z;
+               this.center = initial.south(6);
+            } else {
+               checkPos = initial.north(12);
+               if (this.hasPedestal(checkPos)) {
+                  this.axis = Axis.Z;
+                  this.center = initial.north(6);
+               } else {
+                  checkPos = initial.north(10);
+                  if (this.hasPedestal(checkPos)) {
+                     this.axis = Axis.X;
+                     checkPos = checkPos.east(8);
+                     if (this.hasPedestal(checkPos)) {
+                        this.center = initial.north(5).east(4);
+                     } else {
+                        this.center = initial.north(5).west(4);
+                     }
+                  } else {
+                     checkPos = initial.south(10);
+                     if (this.hasPedestal(checkPos)) {
+                        this.axis = Axis.X;
+                        checkPos = checkPos.east(8);
+                        if (this.hasPedestal(checkPos)) {
+                           this.center = initial.south(5).east(4);
+                        } else {
+                           this.center = initial.south(5).west(4);
+                        }
+                     } else {
+                        checkPos = initial.east(10);
+                        if (this.hasPedestal(checkPos)) {
+                           this.axis = Axis.Z;
+                           checkPos = checkPos.south(8);
+                           if (this.hasPedestal(checkPos)) {
+                              this.center = initial.east(5).south(4);
+                           } else {
+                              this.center = initial.east(5).north(4);
+                           }
+                        } else {
+                           checkPos = initial.west(10);
+                           if (this.hasPedestal(checkPos)) {
+                              this.axis = Axis.Z;
+                              checkPos = checkPos.south(8);
+                              if (this.hasPedestal(checkPos)) {
+                                 this.center = initial.west(5).south(4);
+                              } else {
+                                 this.center = initial.west(5).north(4);
+                              }
+                           }
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
+
+   private boolean hasPedestal(BlockPos pos) {
+      return this.world.getBlockState(pos).is(PEDESTAL);
+   }
+
+   private boolean isActive(BlockPos pos) {
+      BlockState state = this.world.getBlockState(pos);
+      if (state.is(PEDESTAL)) {
+         EternalPedestalEntity pedestal = (EternalPedestalEntity)this.world.getBlockEntity(pos);
+         if (pedestal != null) {
+            if (!pedestal.hasRitual()) {
+               pedestal.linkRitual(this);
+            } else {
+               EternalRitual ritual = pedestal.getRitual();
+               if (!ritual.equals(this)) {
+                  pedestal.linkRitual(this);
+               }
+            }
+         }
+
+         return (Boolean)state.getValue(ACTIVE);
+      } else {
+         return false;
+      }
+   }
+
+   public CompoundTag toTag(CompoundTag tag) {
+      if (this.center != null && this.axis != null) {
+         tag.put("center", NbtUtils.writeBlockPos(this.center));
+         tag.putString("axis", this.axis.getName());
+         tag.putBoolean("active", this.active);
+         tag.putBoolean("will_activate", this.willActivate);
+         if (this.pendingKeyItemId != null) {
+            tag.putString("pending_key_item", this.pendingKeyItemId.toString());
+         }
+
+         if (this.pendingStartPosition != null) {
+            tag.put("pending_start", NbtUtils.writeBlockPos(this.pendingStartPosition));
+         }
+
+         if (this.targetWorldId != null) {
+            tag.putString("key_item", this.targetWorldId.toString());
+         }
+
+         if (this.exit != null) {
+            tag.put("exit", NbtUtils.writeBlockPos(this.exit));
+         }
+
+         return tag;
+      } else {
+         return null;
+      }
+   }
+
+   public void fromTag(CompoundTag tag) {
+      this.axis = Axis.byName(tag.getString("axis"));
+      this.center = NbtUtils.readBlockPos(tag.getCompound("center"));
+      this.active = tag.getBoolean("active");
+      this.willActivate = tag.getBoolean("will_activate");
+      if (tag.contains("pending_key_item")) {
+         this.pendingKeyItemId = new ResourceLocation(tag.getString("pending_key_item"));
+      }
+
+      if (tag.contains("pending_start")) {
+         this.pendingStartPosition = NbtUtils.readBlockPos(tag.getCompound("pending_start"));
+      }
+
+      if (tag.contains("exit")) {
+         this.exit = NbtUtils.readBlockPos(tag.getCompound("exit"));
+      }
+
+      if (tag.contains("key_item")) {
+         this.targetWorldId = new ResourceLocation(tag.getString("key_item"));
+      }
+   }
+
+   @Override
+   public boolean equals(Object o) {
+      if (this == o) {
+         return true;
+      } else if (o != null && this.getClass() == o.getClass()) {
+         EternalRitual ritual = (EternalRitual)o;
+         return this.world.equals(ritual.world) && Objects.equals(this.center, ritual.center) && Objects.equals(this.exit, ritual.exit);
+      } else {
+         return false;
+      }
+   }
+
+   public static EternalRitual findRitualForActivePortal(Level world, BlockPos startPos) {
+      BlockState state = world.getBlockState(startPos);
+      if (!isActivePortalBlock(state)) {
+         return null;
+      } else {
+         Direction direction = state.getValue(NetherPortalBlock.AXIS) == Axis.X ? Direction.EAST : Direction.NORTH;
+
+         while (world.getBlockState(startPos.below()).is(EndBlocks.END_PORTAL_BLOCK)) {
+            startPos = startPos.below();
+         }
+
+         if (world.getBlockState(startPos.relative(direction, -1)).is(EndBlocks.FLAVOLITE_RUNED_ETERNAL)) {
+            startPos = startPos.relative(direction, 1);
+         } else if (world.getBlockState(startPos.relative(direction, 1)).is(EndBlocks.FLAVOLITE_RUNED_ETERNAL)) {
+            startPos = startPos.relative(direction, -1);
+         }
+
+         if (!world.getBlockState(startPos.below()).is(EndBlocks.FLAVOLITE_RUNED_ETERNAL)) {
+            startPos = startPos.below();
+         }
+
+         if (world.getBlockState(startPos.relative(direction, -1)).is(EndBlocks.FLAVOLITE_RUNED_ETERNAL)) {
+            startPos = startPos.relative(direction, 1);
+         } else if (world.getBlockState(startPos.relative(direction, 1)).is(EndBlocks.FLAVOLITE_RUNED_ETERNAL)) {
+            startPos = startPos.relative(direction, -1);
+         }
+
+         startPos = startPos.relative(direction.getClockWise(), 6);
+         state = world.getBlockState(startPos);
+         return state.is(EndBlocks.ETERNAL_PEDESTAL) && world.getBlockEntity(startPos) instanceof EternalPedestalEntity pedestal ? pedestal.getRitual() : null;
+      }
+   }
+
+   private static boolean isActivePortalBlock(BlockState state) {
+      return state.is(EndBlocks.END_PORTAL_BLOCK) && state.hasProperty(NetherPortalBlock.AXIS);
+   }
 }

@@ -1415,34 +1415,30 @@ public class EndFeatures {
     }
 
     public static void addBiomeFeatures(ResourceLocation id, Holder<Biome> biome) {
-        if (!BetterEnd.MOD_ID.equals(id.getNamespace())) {
-            BiomeAPI.addBiomeFeature(biome, FLAVOLITE_LAYER);
-            BiomeAPI.addBiomeFeature(biome, THALLASIUM_ORE);
-            BiomeAPI.addBiomeFeature(biome, ENDER_ORE);
-            BiomeAPI.addBiomeFeature(biome, CRASHED_SHIP);
-
-            BCLBiome bclbiome = BiomeAPI.getBiome(id);
-            if (!BCLBiomeRegistry.isEmptyBiome(bclbiome)) {
-                BCLFeature<BuildingListFeature, BuildingListFeatureConfig> feature = getBiomeStructures(bclbiome.getID());
-                if (feature != null) {
-                    BiomeAPI.addBiomeFeature(biome, feature);
-                }
+      if (!"betterend".equals(id.getNamespace())) {
+         BiomeAPI.addBiomeFeature(biome, FLAVOLITE_LAYER);
+         BiomeAPI.addBiomeFeature(biome, THALLASIUM_ORE);
+         BiomeAPI.addBiomeFeature(biome, ENDER_ORE);
+         BiomeAPI.addBiomeFeature(biome, CRASHED_SHIP);
+         BCLBiome bclbiome = BiomeAPI.getBiome(id);
+         if (!BCLBiomeRegistry.isEmptyBiome(bclbiome)) {
+            BCLFeature<BuildingListFeature, BuildingListFeatureConfig> feature = getBiomeStructures(bclbiome.getID());
+            if (feature != null) {
+               BiomeAPI.addBiomeFeature(biome, feature);
             }
+         }
 
+         boolean hasCaves = !(bclbiome instanceof EndCaveBiome);
+         if (!(bclbiome instanceof EndCaveBiome) && bclbiome instanceof EndBiome endBiome) {
+            hasCaves = endBiome.hasCaves();
+         }
 
-            boolean hasCaves = !(bclbiome instanceof EndCaveBiome);
-            if (!(bclbiome instanceof EndCaveBiome) && bclbiome instanceof EndBiome endBiome) {
-                hasCaves = endBiome.hasCaves();
-            }
-
-            if (hasCaves && !BiomeAPI.wasRegisteredAsEndVoidBiome(id) /*!BiomeAPI.END_VOID_BIOME_PICKER.containsImmutable(id)*/) {
-                if (Configs.BIOME_CONFIG.getBoolean(id, "hasCaves", true)) {
-                    BiomeAPI.addBiomeFeature(biome, ROUND_CAVE);
-                    BiomeAPI.addBiomeFeature(biome, TUNEL_CAVE);
-                }
-            }
-        }
-    }
+         if (hasCaves && !BiomeAPI.wasRegisteredAsEndVoidBiome(id)) {
+            BiomeAPI.addBiomeFeature(biome, ROUND_CAVE);
+            BiomeAPI.addBiomeFeature(biome, TUNEL_CAVE);
+         }
+      }
+   }
 
     private static BCLFeature<BuildingListFeature, BuildingListFeatureConfig> getBiomeStructures(ResourceLocation loc) {
         String ns = loc.getNamespace();

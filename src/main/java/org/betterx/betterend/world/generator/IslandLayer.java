@@ -1,5 +1,12 @@
 package org.betterx.betterend.world.generator;
 
+import com.google.common.collect.Maps;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.levelgen.LegacyRandomSource;
 import org.betterx.bclib.sdf.SDF;
 import org.betterx.bclib.sdf.operator.SDFRadialNoiseMap;
 import org.betterx.bclib.sdf.operator.SDFScale;
@@ -9,188 +16,139 @@ import org.betterx.bclib.sdf.primitive.SDFCappedCone;
 import org.betterx.bclib.util.MHelper;
 import org.betterx.betterend.noise.OpenSimplexNoise;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.levelgen.LegacyRandomSource;
-
-import com.google.common.collect.Maps;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 public class IslandLayer {
-    private static final RandomSource RANDOM = new LegacyRandomSource(MHelper.RANDOM.nextLong());
-    private final SDFRadialNoiseMap noise;
-    private final SDF island;
+   private final SDFRadialNoiseMap noise;
+   private final SDF island;
+   private final List<BlockPos> positions = new ArrayList<>(9);
+   private final Map<BlockPos, SDF> islands = Maps.newHashMap();
+   private final OpenSimplexNoise density;
+   private final int seed;
+   private int lastX = Integer.MIN_VALUE;
+   private int lastZ = Integer.MIN_VALUE;
+   private final LayerOptions options;
 
-    private final List<BlockPos> positions = new ArrayList<>(9);
-    private final Map<BlockPos, SDF> islands = Maps.newHashMap();
-    private final OpenSimplexNoise density;
-    private final int seed;
-    private int lastX = Integer.MIN_VALUE;
-    private int lastZ = Integer.MIN_VALUE;
-    private final LayerOptions options;
+   public IslandLayer(int seed, LayerOptions options) {
+      this.density = new OpenSimplexNoise(seed);
+      this.options = options;
+      this.seed = seed;
+      SDF cone1 = makeCone(0.0F, 0.4F, 0.2F, -0.3F);
+      SDF cone2 = makeCone(0.4F, 0.5F, 0.1F, -0.1F);
+      SDF cone3 = makeCone(0.5F, 0.45F, 0.03F, 0.0F);
+      SDF cone4 = makeCone(0.45F, 0.0F, 0.02F, 0.03F);
+      SDF coneBottom = new SDFSmoothUnion().setRadius(0.02F).setSourceA(cone1).setSourceB(cone2);
+      SDF coneTop = new SDFSmoothUnion().setRadius(0.02F).setSourceA(cone3).setSourceB(cone4);
+      this.noise = (SDFRadialNoiseMap)new SDFRadialNoiseMap().setSeed(seed).setRadius(0.5F).setIntensity(0.2F).setSource(coneTop);
+      this.island = new SDFSmoothUnion().setRadius(0.01F).setSourceA(this.noise).setSourceB(coneBottom);
+   }
 
-    public IslandLayer(int seed, LayerOptions options) {
-        this.density = new OpenSimplexNoise(seed);
-        this.options = options;
-        this.seed = seed;
+   private int getSeed(int x, int z) {
+      int h = this.seed + x * 374761393 + z * 668265263;
+      h = (h ^ h >> 13) * 1274126177;
+      return h ^ h >> 16;
+   }
 
-        SDF cone1 = makeCone(0, 0.4F, 0.2F, -0.3F);
-        SDF cone2 = makeCone(0.4F, 0.5F, 0.1F, -0.1F);
-        SDF cone3 = makeCone(0.5F, 0.45F, 0.03F, 0.0F);
-        SDF cone4 = makeCone(0.45F, 0, 0.02F, 0.03F);
+   public void updatePositions(double x, double z, int maxHeight) {
+      int ix = MHelper.floor(x / this.options.distance);
+      int iz = MHelper.floor(z / this.options.distance);
+      if (this.lastX != ix || this.lastZ != iz) {
+         this.lastX = ix;
+         this.lastZ = iz;
+         this.positions.clear();
 
-        SDF coneBottom = new SDFSmoothUnion().setRadius(0.02F).setSourceA(cone1).setSourceB(cone2);
-        SDF coneTop = new SDFSmoothUnion().setRadius(0.02F).setSourceA(cone3).setSourceB(cone4);
-        noise = (SDFRadialNoiseMap) new SDFRadialNoiseMap().setSeed(seed)
-                                                           .setRadius(0.5F)
-                                                           .setIntensity(0.2F)
-                                                           .setSource(coneTop);
-        island = new SDFSmoothUnion().setRadius(0.01F).setSourceA(noise).setSourceB(coneBottom);
-    }
+         for (int pox = -1; pox < 2; pox++) {
+            int px = pox + ix;
 
-    private int getSeed(int x, int z) {
-        int h = seed + x * 374761393 + z * 668265263;
-        h = (h ^ (h >> 13)) * 1274126177;
-        return h ^ (h >> 16);
-    }
-
-    public void updatePositions(double x, double z, int maxHeight) {
-        int ix = MHelper.floor(x / options.distance);
-        int iz = MHelper.floor(z / options.distance);
-
-        if (lastX != ix || lastZ != iz) {
-            lastX = ix;
-            lastZ = iz;
-            positions.clear();
-            for (int pox = -1; pox < 2; pox++) {
-                int px = pox + ix;
-                for (int poz = -1; poz < 2; poz++) {
-                    int pz = poz + iz;
-                    if ((long) px * (long) px + (long) pz * (long) pz > options.centerDist) {
-                        RANDOM.setSeed(getSeed(px, pz));
-                        double posX = (px + RANDOM.nextFloat()) * options.distance;
-                        double posY = MHelper.randRange(options.minY, options.maxY, RANDOM) * maxHeight;
-                        double posZ = (pz + RANDOM.nextFloat()) * options.distance;
-                        if (density.eval(posX * 0.01, posZ * 0.01) > options.coverage) {
-                            positions.add(new BlockPos((int) posX, (int) posY, (int) posZ));
-                        }
-                    }
-                }
+            for (int poz = -1; poz < 2; poz++) {
+               int pz = poz + iz;
+               if ((long)px * px + (long)pz * pz > this.options.centerDist) {
+                  RandomSource random = new LegacyRandomSource(this.getSeed(px, pz));
+                  double posX = (px + random.nextFloat()) * this.options.distance;
+                  double posY = MHelper.randRange(this.options.minY, this.options.maxY, random) * maxHeight;
+                  double posZ = (pz + random.nextFloat()) * this.options.distance;
+                  if (this.density.eval(posX * 0.01, posZ * 0.01) > this.options.coverage) {
+                     this.positions.add(new BlockPos((int)posX, (int)posY, (int)posZ));
+                  }
+               }
             }
-        }
+         }
+      }
 
-        int centerSize = GeneratorOptions.getIslandDistChunk();
-        int innerVoidRadiusSqr = GeneratorOptions.getIslandDistBlockSqr();
-        if (TerrainGenerator.config != null) {
-            centerSize = TerrainGenerator.config.centerBiomesSize;
-            innerVoidRadiusSqr = TerrainGenerator.config.innerVoidRadiusSquared;
-        }
-        if (GeneratorOptions.hasCentralIsland() && Math.abs(ix) < centerSize && Math.abs(iz) < centerSize) {
-            int count = positions.size();
-            for (int n = 0; n < count; n++) {
-                BlockPos pos = positions.get(n);
-                long d = (long) pos.getX() * (long) pos.getX() + (long) pos.getZ() * (long) pos.getZ();
-                if (d < innerVoidRadiusSqr) {
-                    positions.remove(n);
-                    count--;
-                    n--;
-                }
+      long innerVoidRadiusSqr = VoidRing.terrainRadiusSqr();
+      int centerSize = (int)Math.sqrt(innerVoidRadiusSqr) >> 3;
+      if (GeneratorOptions.hasCentralIsland() && Math.abs(ix) < centerSize && Math.abs(iz) < centerSize) {
+         int count = this.positions.size();
+
+         for (int n = 0; n < count; n++) {
+            BlockPos pos = this.positions.get(n);
+            long d = (long)pos.getX() * pos.getX() + (long)pos.getZ() * pos.getZ();
+            if (d < innerVoidRadiusSqr) {
+               this.positions.remove(n);
+               count--;
+               n--;
             }
-            if (options.hasCentralIsland) {
-                positions.add(new BlockPos(0, 64, 0));
-            }
-        }
-    }
+         }
 
-    private SDF getIsland(BlockPos pos) {
-        SDF island = islands.get(pos);
-        if (island == null) {
-            if (pos.getX() == 0 && pos.getZ() == 0) {
-                island = new SDFScale().setScale(1.3F).setSource(this.island);
-            } else {
-                RANDOM.setSeed(getSeed(pos.getX(), pos.getZ()));
-                island = new SDFScale().setScale(RANDOM.nextFloat() + 0.5F).setSource(this.island);
-            }
-            islands.put(pos, island);
-        }
-        noise.setOffset(pos.getX(), pos.getZ());
-        return island;
-    }
+         if (this.options.hasCentralIsland) {
+            this.positions.add(new BlockPos(0, 64, 0));
+         }
+      }
+   }
 
-    private float getRelativeDistance(SDF sdf, BlockPos center, double px, double py, double pz) {
-        float x = (float) (px - center.getX()) / options.scale;
-        float y = (float) (py - center.getY()) / options.scale;
-        float z = (float) (pz - center.getZ()) / options.scale;
-        return sdf.getDistance(x, y, z);
-    }
+   private SDF getIsland(BlockPos pos) {
+      SDF island = this.islands.get(pos);
+      if (island == null) {
+         if (pos.getX() == 0 && pos.getZ() == 0) {
+            island = new SDFScale().setScale(1.3F).setSource(this.island);
+         } else {
+            RandomSource random = new LegacyRandomSource(this.getSeed(pos.getX(), pos.getZ()));
+            island = new SDFScale().setScale(random.nextFloat() + 0.5F).setSource(this.island);
+         }
 
-    private float calculateSDF(double x, double y, double z) {
-        float distance = 10;
-        for (BlockPos pos : positions) {
-            SDF island = getIsland(pos);
-            float dist = getRelativeDistance(island, pos, x, y, z);
-            distance = MHelper.min(distance, dist);
-        }
-        return distance;
-    }
+         this.islands.put(pos, island);
+      }
 
-    public float getDensity(double x, double y, double z) {
-        return -calculateSDF(x, y, z);
-    }
+      this.noise.setOffset(pos.getX(), pos.getZ());
+      return island;
+   }
 
-    public float getDensity(double x, double y, double z, float height) {
-        noise.setIntensity(height);
-        noise.setRadius(0.5F / (1 + height));
-        return -calculateSDF(x, y, z);
-    }
+   private float getRelativeDistance(SDF sdf, BlockPos center, double px, double py, double pz) {
+      float x = (float)(px - center.getX()) / this.options.scale;
+      float y = (float)(py - center.getY()) / this.options.scale;
+      float z = (float)(pz - center.getZ()) / this.options.scale;
+      return sdf.getDistance(x, y, z);
+   }
 
-    public void clearCache() {
-        if (islands.size() > 128) {
-            islands.clear();
-        }
-    }
+   private float calculateSDF(double x, double y, double z) {
+      float distance = 10.0F;
 
-    private static SDF makeCone(float radiusBottom, float radiusTop, float height, float minY) {
-        float hh = height * 0.5F;
-        SDF sdf = new SDFCappedCone().setHeight(hh).setRadius1(radiusBottom).setRadius2(radiusTop);
-        return new SDFTranslate().setTranslate(0, minY + hh, 0).setSource(sdf);
-    }
+      for (BlockPos pos : this.positions) {
+         SDF island = this.getIsland(pos);
+         float dist = this.getRelativeDistance(island, pos, x, y, z);
+         distance = MHelper.min(distance, dist);
+      }
 
-    /*private static NativeImage loadMap(String path) {
-        InputStream stream = IslandLayer.class.getResourceAsStream(path);
-        if (stream != null) {
-            try {
-                NativeImage map = NativeImage.read(stream);
-                stream.close();
-                return map;
-            }
-            catch (IOException e) {
-                BetterEnd.LOGGER.warning(e.getMessage());
-            }
-        }
-        return null;
-    }*/
+      return distance;
+   }
 
-    /*static {
-        NativeImage map = loadMap("/assets/" + BetterEnd.MOD_ID + "/textures/heightmaps/mountain_1.png");
+   public float getDensity(double x, double y, double z) {
+      return -this.calculateSDF(x, y, z);
+   }
 
-        SDF cone1 = makeCone(0, 0.4F, 0.2F, -0.3F);
-        SDF cone2 = makeCone(0.4F, 0.5F, 0.1F, -0.1F);
-        SDF cone3 = makeCone(0.5F, 0.45F, 0.03F, 0.0F);
-        SDF cone4 = makeCone(0.45F, 0, 0.02F, 0.03F);
+   public float getDensity(double x, double y, double z, float height) {
+      this.noise.setIntensity(height);
+      this.noise.setRadius(0.5F / (1.0F + height));
+      return -this.calculateSDF(x, y, z);
+   }
 
-        SDF coneBottom = new SDFSmoothUnion().setRadius(0.02F).setSourceA(cone1).setSourceB(cone2);
-        SDF coneTop = new SDFSmoothUnion().setRadius(0.02F).setSourceA(cone3).setSourceB(cone4);
+   public void clearCache() {
+      if (this.islands.size() > 128) {
+         this.islands.clear();
+      }
+   }
 
-        SDF map1 = new SDFHeightmap().setMap(map).setIntensity(0.3F).setSource(coneTop);
-        NOISE = (SDFRadialNoiseMap) new SDFRadialNoiseMap().setSource(coneTop);
-
-        ISLAND = new SDF[] {
-            new SDFSmoothUnion().setRadius(0.01F).setSourceA(coneTop).setSourceB(coneBottom),
-            new SDFSmoothUnion().setRadius(0.01F).setSourceA(map1).setSourceB(coneBottom)
-        };
-    }*/
+   private static SDF makeCone(float radiusBottom, float radiusTop, float height, float minY) {
+      float hh = height * 0.5F;
+      SDF sdf = new SDFCappedCone().setHeight(hh).setRadius1(radiusBottom).setRadius2(radiusTop);
+      return new SDFTranslate().setTranslate(0.0F, minY + hh, 0.0F).setSource(sdf);
+   }
 }

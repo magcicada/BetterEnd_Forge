@@ -31,27 +31,26 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 public class CrashedShipFeature extends NBTFeature<NBTFeatureConfig> {
     private static final StructureProcessor REPLACER;
     private static final String STRUCTURE_PATH = "/data/minecraft/structures/end_city/ship.nbt";
-    private StructureTemplate structure;
+    private volatile StructureTemplate structure;
 
     public CrashedShipFeature() {
         super(NBTFeatureConfig.CODEC);
     }
 
     @Override
-    protected StructureTemplate getStructure(
-            NBTFeatureConfig cfg,
-            WorldGenLevel world,
-            BlockPos pos,
-            RandomSource random
-    ) {
-        if (structure == null) {
-            structure = world.getLevel().getStructureManager().getOrCreate(new ResourceLocation("end_city/ship"));
-            if (structure == null) {
-                structure = EndStructureHelper.readStructure(STRUCTURE_PATH);
-            }
-        }
-        return structure;
-    }
+   protected StructureTemplate getStructure(NBTFeatureConfig cfg, WorldGenLevel world, BlockPos pos, RandomSource random) {
+      StructureTemplate result = this.structure;
+      if (result == null) {
+         result = world.getLevel().getStructureManager().getOrCreate(new ResourceLocation("end_city/ship"));
+         if (result == null) {
+            result = EndStructureHelper.readStructure("/data/minecraft/structures/end_city/ship.nbt");
+         }
+
+         this.structure = result;
+      }
+
+      return result;
+   }
 
     @Override
     protected boolean canSpawn(WorldGenLevel world, BlockPos pos, RandomSource random) {

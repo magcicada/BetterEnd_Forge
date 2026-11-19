@@ -765,13 +765,10 @@ public class EndBlocks {
     }
 
     public static Block registerBlock(ResourceLocation id, Block block, TagKey<Block>... tags) {
-        if (!Configs.BLOCK_CONFIG.getBooleanRoot(id.getPath(), true)) {
-            return block;
-        }
-        getBlockRegistry().register(id, block);
-        TagManager.BLOCKS.add(block, tags);
-        return block;
-    }
+      getBlockRegistry().register(id, block);
+      TagManager.BLOCKS.add(block, tags);
+      return block;
+   }
 
     public static Block registerBlock(String name, Block block, TagKey<Block>... tags) {
         return registerBlock(BetterEnd.makeID(name), block, tags);

@@ -2,6 +2,8 @@ package org.betterx.datagen.betterend;
 
 import org.betterx.bclib.api.v3.datagen.TagDataProvider;
 import org.betterx.betterend.BetterEnd;
+import org.betterx.betterend.registry.EndBlocks;
+import net.minecraft.tags.BlockTags;
 import org.betterx.worlds.together.WorldsTogether;
 import org.betterx.worlds.together.tag.v3.CommonBlockTags;
 import org.betterx.worlds.together.tag.v3.TagManager;
@@ -31,5 +33,7 @@ public class EndBlockTagDataProvider extends TagDataProvider<Block> {
                 registriesFuture,
                 existingFileHelper
         );
+        // These manual tags normally come from common setup, which datagen skips.
+        TagManager.BLOCKS.add(BlockTags.MINEABLE_WITH_AXE, EndBlocks.AMARANITA_STEM, EndBlocks.AMARANITA_HYPHAE);
     }
 }

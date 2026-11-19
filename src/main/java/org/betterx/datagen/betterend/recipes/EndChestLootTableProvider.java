@@ -301,7 +301,7 @@ public class EndChestLootTableProvider extends CompatLootTableProvider {
                             .apply(SetItemCountFunction.setCount(UniformGenerator.between(1, 4)))
                     )
                     .add(LootItem
-                            .lootTableItem(EndBlocks.FLAVOLITE_RUNED_ETERNAL)
+                            .lootTableItem(EndBlocks.FLAVOLITE_RUNED)
                             .setWeight(4)
                             .apply(SetItemCountFunction.setCount(ConstantValue.exactly(1)))
                     )

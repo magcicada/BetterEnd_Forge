@@ -1,6 +1,6 @@
 package org.betterx.betterend.blocks.basis;
 
-import org.betterx.bclib.behaviours.interfaces.BehaviourWood;
+import org.betterx.bclib.behaviours.interfaces.BehaviourStone;
 import org.betterx.bclib.client.models.ModelsHelper;
 import org.betterx.bclib.interfaces.CustomColorProvider;
 import org.betterx.betterend.client.models.Patterns;
@@ -24,7 +24,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import java.util.Optional;
 import org.jetbrains.annotations.Nullable;
 
-public class StoneLanternBlock extends EndLanternBlock implements CustomColorProvider, BehaviourWood {
+public class StoneLanternBlock extends EndLanternBlock implements CustomColorProvider, BehaviourStone {
     private static final VoxelShape SHAPE_CEIL = box(3, 1, 3, 13, 16, 13);
     private static final VoxelShape SHAPE_FLOOR = box(3, 0, 3, 13, 15, 13);
 

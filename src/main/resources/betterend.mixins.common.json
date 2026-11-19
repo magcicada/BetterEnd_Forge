@@ -15,6 +15,7 @@
     "CraftingMenuMixin",
     "EndCityFeatureMixin",
     "EndDragonFightMixin",
+    "EndIslandDensityFunctionMixin",
     "EnderManMixin",
     "EndPodiumFeatureMixin",
     "EndSpikeMixin",
@@ -34,7 +35,6 @@
     "SlimeMixin",
     "SpikeFeatureMixin",
     "StructureMixin",
-    "WorldGenRegionMixin",
     "portal.EntityAccessor",
     "portal.EntityMixin",
     "portal.ServerPlayerAccessor"

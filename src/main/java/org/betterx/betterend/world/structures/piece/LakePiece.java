@@ -1,19 +1,12 @@
 package org.betterx.betterend.world.structures.piece;
 
-
-import org.betterx.bclib.util.BlocksHelper;
-import org.betterx.bclib.util.MHelper;
-import org.betterx.betterend.noise.OpenSimplexNoise;
-import org.betterx.betterend.registry.EndBlocks;
-import org.betterx.betterend.registry.EndStructures;
-import org.betterx.betterend.world.biome.EndBiome;
-import org.betterx.worlds.together.tag.v3.CommonBlockTags;
-
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.BlockPos.MutableBlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
+import net.minecraft.core.BlockPos.MutableBlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
@@ -29,578 +22,441 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.levelgen.Heightmap.Types;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.material.FluidState;
-
-import com.google.common.collect.Maps;
-
-import java.util.Map;
+import org.betterx.bclib.util.BlocksHelper;
+import org.betterx.bclib.util.GenerationArea;
+import org.betterx.bclib.util.MHelper;
+import org.betterx.betterend.noise.OpenSimplexNoise;
+import org.betterx.betterend.registry.EndBlocks;
+import org.betterx.betterend.registry.EndStructures;
+import org.betterx.betterend.world.biome.EndBiome;
+import org.betterx.worlds.together.tag.v3.CommonBlockTags;
 
 public class LakePiece extends BasePiece {
-    private static final BlockState ENDSTONE = Blocks.END_STONE.defaultBlockState();
-    private static final BlockState WATER = Blocks.WATER.defaultBlockState();
+   private static final BlockState ENDSTONE = Blocks.END_STONE.defaultBlockState();
+   private static final BlockState WATER = Blocks.WATER.defaultBlockState();
+   private static final int SHORE_WIDTH = 16;
+   private static final double OUTER_WATER_WEIGHT_MIN = 0.1;
+   private static final double OUTER_WATER_WEIGHT_MAX = 0.3;
+   private static final int GROUND_SEARCH_DEPTH = 32;
+   private static final int BRIDGE_DEPTH = 8;
+   private static final int SHELL_DEPTH = 4;
+   private static BlockState[] rimPlants;
+   private final Map<Integer, Byte> heightmap = new ConcurrentHashMap<>();
+   private OpenSimplexNoise noise;
+   private BlockPos center;
+   private float radius;
+   private float aspect;
+   private float depth;
+   private int seed;
+   private int waterLevel;
+   private ResourceKey<Biome> biomeID;
+   private BlockState lastSurfaceMaterial;
+   private static final int NO_GROUND = Integer.MIN_VALUE;
+   private static final int FLUID_BELOW = -2147483647;
+   private static final int MAX_AIR_FILL = 4;
 
-    // Grounding parameters (see groundColumn): the shore is a band SHORE_WIDTH blocks wide that slopes
-    // from the water surface down to the surrounding terrain. Its top height at distance dOut from the
-    // water edge is a blend water_weight*waterLevel + (1-water_weight)*groundLevel, where water_weight
-    // runs from 1.0 at the waterline (the shore meets the water flush - no waterfall) down to
-    // OUTER_WATER_WEIGHT at the outer edge, so the outermost ring is almost all ground and blends in.
-    private static final int SHORE_WIDTH = 16;
-    // Water-weight bounds at the outermost shore ring (mostly ground). The inner ring is fixed at 1.0
-    // (both bounds), so the min bound interpolates 1.0 -> 0.1 and the max bound 1.0 -> 0.3 across the
-    // band, independently; a noise field then picks the actual weight within [min,max] per column, so
-    // the outer edge sits at 0.1..0.3 * waterLevel + 0.9..0.7 * groundLevel and isn't a perfect circle.
-    private static final double OUTER_WATER_WEIGHT_MIN = 0.1;
-    private static final double OUTER_WATER_WEIGHT_MAX = 0.3;
-    // How far below a fill's starting point the real terrain is searched for.
-    private static final int GROUND_SEARCH_DEPTH = 32;
-    // Air gaps up to this deep are closed completely (a lake hovering slightly above its terrain).
-    // Deeper cavities are NEVER filled through: caves (which generate in RAW_GENERATION, before the
-    // LAKES step) stay intact and the void stays open - the lake only seals itself with a shell.
-    private static final int BRIDGE_DEPTH = 8;
-    // Thickness of that sealing shell. Hanging below the lowest water block of each column, it
-    // follows the ellipsoid bowl (and the terraced skirt) instead of ending in a flat plane.
-    private static final int SHELL_DEPTH = 4;
+   private static BlockState[] rimPlants() {
+      if (rimPlants == null) {
+         rimPlants = new BlockState[]{EndBlocks.JUNGLE_GRASS.defaultBlockState(), EndBlocks.UMBRELLA_MOSS.defaultBlockState()};
+      }
 
-    // Biome-neutral plants scattered on lake shores. Blue Vine Fur and Filalux Wings remain
-    // exclusive to their normal biome features instead of appearing around unrelated ponds.
-    private static BlockState[] rimPlants;
+      return rimPlants;
+   }
 
-    private static BlockState[] rimPlants() {
-        if (rimPlants == null) {
-            rimPlants = new BlockState[]{
-                    EndBlocks.JUNGLE_GRASS.defaultBlockState(),
-                    EndBlocks.UMBRELLA_MOSS.defaultBlockState(),
-            };
-        }
-        return rimPlants;
-    }
-    private final Map<Integer, Byte> heightmap = Maps.newHashMap();
-    private OpenSimplexNoise noise;
-    private BlockPos center;
-    private float radius;
-    private float aspect;
-    private float depth;
-    private int seed;
-    // The y of the water surface. Usually center.getY(), but lowered by LakeWaterLevels when this
-    // lake overlaps another megalake, so all lakes of an overlapping cluster share one surface and
-    // merge instead of layering. The bowl SHAPE stays centred on center - only the fill level moves,
-    // which at worst leaves the upper lake as a partly dry bowl draining into the lower one.
-    private int waterLevel;
+   public LakePiece(BlockPos center, float radius, float depth, RandomSource random, Holder<Biome> biome, int waterLevel) {
+      super(EndStructures.LAKE_PIECE, random.nextInt(), null);
+      this.center = center;
+      this.radius = radius;
+      this.depth = depth;
+      this.seed = random.nextInt();
+      this.noise = new OpenSimplexNoise(this.seed);
+      this.aspect = radius / depth;
+      this.biomeID = (ResourceKey<Biome>)biome.unwrapKey().orElse(null);
+      this.waterLevel = waterLevel;
+      this.makeBoundingBox();
+   }
 
-    private ResourceKey<Biome> biomeID;
-    private BlockState lastSurfaceMaterial;
+   public LakePiece(StructurePieceSerializationContext type, CompoundTag tag) {
+      super(EndStructures.LAKE_PIECE, tag);
+      this.makeBoundingBox();
+   }
 
-    public LakePiece(
-            BlockPos center,
-            float radius,
-            float depth,
-            RandomSource random,
-            Holder<Biome> biome,
-            int waterLevel
-    ) {
-        super(EndStructures.LAKE_PIECE, random.nextInt(), null);
-        this.center = center;
-        this.radius = radius;
-        this.depth = depth;
-        this.seed = random.nextInt();
-        this.noise = new OpenSimplexNoise(this.seed);
-        this.aspect = radius / depth;
-        this.biomeID = biome.unwrapKey().orElse(null);
-        this.waterLevel = waterLevel;
-        makeBoundingBox();
-    }
+   @Override
+   protected void addAdditionalSaveData(CompoundTag tag) {
+      tag.put("center", NbtUtils.writeBlockPos(this.center));
+      tag.putFloat("radius", this.radius);
+      tag.putFloat("depth", this.depth);
+      tag.putInt("seed", this.seed);
+      tag.putInt("water_level", this.waterLevel);
+      tag.putString("biome", this.biomeID.location().toString());
+   }
 
-    public LakePiece(StructurePieceSerializationContext type, CompoundTag tag) {
-        super(EndStructures.LAKE_PIECE, tag);
-        makeBoundingBox();
-    }
+   @Override
+   protected void fromNbt(CompoundTag tag) {
+      this.center = NbtUtils.readBlockPos(tag.getCompound("center"));
+      this.radius = tag.contains("radius", 5) ? tag.getFloat("radius") : 0.0F;
+      this.depth = tag.contains("depth", 5) ? tag.getFloat("depth") : 0.0F;
+      this.seed = tag.contains("seed", 3) ? tag.getInt("seed") : 0;
+      this.waterLevel = tag.contains("water_level", 3) ? tag.getInt("water_level") : this.center.getY();
+      this.noise = new OpenSimplexNoise(this.seed);
+      this.aspect = this.radius / this.depth;
+      this.biomeID = ResourceKey.create(Registries.BIOME, new ResourceLocation(tag.getString("biome")));
+   }
 
-    @Override
-    protected void addAdditionalSaveData(CompoundTag tag) {
-        tag.put("center", NbtUtils.writeBlockPos(center));
-        tag.putFloat("radius", radius);
-        tag.putFloat("depth", depth);
-        tag.putInt("seed", seed);
-        tag.putInt("water_level", waterLevel);
-        tag.putString("biome", biomeID.location().toString());
-    }
-
-    @Override
-    protected void fromNbt(CompoundTag tag) {
-        center = NbtUtils.readBlockPos(tag.getCompound("center"));
-        radius = tag.contains("radius", 5) ? tag.getFloat("radius") : 0;
-        depth = tag.contains("depth", 5) ? tag.getFloat("depth") : 0;
-        seed = tag.contains("seed", 3) ? tag.getInt("seed") : 0;
-        waterLevel = tag.contains("water_level", 3) ? tag.getInt("water_level") : center.getY();
-        noise = new OpenSimplexNoise(seed);
-        aspect = radius / depth;
-        biomeID = ResourceKey.create(Registries.BIOME, new ResourceLocation(tag.getString("biome")));
-    }
-
-    /**
-     * Returns the terrain material to use for the lake rim/floor. Prefers whatever real terrain
-     * block was last sampled while carving the lake (see {@link #postProcess}), since that reflects
-     * whatever the current SurfaceRules actually placed there. Only falls back to a biome lookup
-     * ({@link EndBiome#findTopMaterial(Holder)}) before the very first block has been sampled.
-     */
-    private BlockState surfaceMaterial(WorldGenLevel world) {
-        if (lastSurfaceMaterial != null) {
-            return lastSurfaceMaterial;
-        }
-        if (biomeID != null) {
-            Holder<Biome> biome = world.registryAccess()
-                                        .lookupOrThrow(Registries.BIOME)
-                                        .get(biomeID)
-                                        .orElse(null);
+   private BlockState surfaceMaterial(WorldGenLevel world) {
+      if (this.lastSurfaceMaterial != null) {
+         return this.lastSurfaceMaterial;
+      } else {
+         if (this.biomeID != null) {
+            Holder<Biome> biome = (Holder<Biome>)world.registryAccess().lookupOrThrow(Registries.BIOME).get(this.biomeID).orElse(null);
             if (biome != null) {
-                return EndBiome.findTopMaterial(biome.value());
+               return EndBiome.findTopMaterial((Biome)biome.value());
             }
-        }
-        return ENDSTONE;
-    }
+         }
 
-    /**
-     * Chooses a rim/floor block - biome surface material or bare end stone - from this lake's own
-     * {@link #noise} field (a separate channel from the shape) rather than per-block random, so the two
-     * form coherent patches along the bank instead of salt-and-pepper speckle. World coordinates keep the
-     * patches consistent across chunk seams; a higher {@code endstoneBias} yields more end stone (the raw
-     * noise sits in roughly {@code [-1,1]}).
-     */
-    private BlockState shorePatch(WorldGenLevel world, int worldX, int worldZ, double endstoneBias) {
-        return noise.eval(worldX * 0.1, worldZ * 0.1, 200) < endstoneBias
-                ? ENDSTONE
-                : surfaceMaterial(world);
-    }
+         return ENDSTONE;
+      }
+   }
 
-    @Override
-    public void postProcess(
-            WorldGenLevel world,
-            StructureManager arg,
-            ChunkGenerator chunkGenerator,
-            RandomSource random,
-            BoundingBox blockBox,
-            ChunkPos chunkPos,
-            BlockPos blockPos
-    ) {
-        int minY = carveMinY();
-        int maxY = this.boundingBox.maxY();
-        int sx = SectionPos.sectionToBlockCoord(chunkPos.x);
-        int sz = SectionPos.sectionToBlockCoord(chunkPos.z);
-        MutableBlockPos mut = new MutableBlockPos();
-        ChunkAccess chunk = world.getChunk(chunkPos.x, chunkPos.z);
-        for (int x = 0; x < 16; x++) {
-            mut.setX(x);
-            int wx = x | sx;
-            double nx = wx * 0.1;
-            int x2 = wx - center.getX();
-            for (int z = 0; z < 16; z++) {
-                mut.setZ(z);
-                int wz = z | sz;
-                double nz = wz * 0.1;
-                int z2 = wz - center.getZ();
-                float clamp = getHeightClamp(world, 8, wx, wz);
-                if (clamp < 0.01) continue;
+   private BlockState shorePatch(WorldGenLevel world, int worldX, int worldZ, double endstoneBias) {
+      return this.noise.eval(worldX * 0.1, worldZ * 0.1, 200.0) < endstoneBias ? ENDSTONE : this.surfaceMaterial(world);
+   }
 
-                double n = noise.eval(nx, nz) * 1.5 + 1.5;
-                double x3 = MHelper.sqr(x2 + noise.eval(nx, nz, 100) * 10);
-                double z3 = MHelper.sqr(z2 + noise.eval(nx, nz, -100) * 10);
+   public void postProcess(
+      WorldGenLevel world, StructureManager arg, ChunkGenerator chunkGenerator, RandomSource random, BoundingBox blockBox, ChunkPos chunkPos, BlockPos blockPos
+   ) {
+      int minY = this.carveMinY();
+      int maxY = this.boundingBox.maxY();
+      int sx = SectionPos.sectionToBlockCoord(chunkPos.x);
+      int sz = SectionPos.sectionToBlockCoord(chunkPos.z);
+      MutableBlockPos mut = new MutableBlockPos();
+      ChunkAccess chunk = world.getChunk(chunkPos.x, chunkPos.z);
 
-                for (int y = maxY; y >= minY; y--) {
-                    mut.setY((int) (y + n));
-                    double y2 = MHelper.sqr((y - center.getY()) * aspect);
-                    double r2 = radius * clamp;
-                    double r3 = r2 + 8;
-                    r2 *= r2;
-                    r3 = r3 * r3 + 100;
-                    double dist = x3 + y2 + z3;
-                    if (dist < r2) {
-                        BlockState state = chunk.getBlockState(mut);
-                        // Remember the real biome surface block before carving it away, so the rim
-                        // fill below reuses it. This includes END_STONES-tagged biome surfaces such
-                        // as sulphuric rock, flavolite and the mosses (which noise-driven surface
-                        // rules place instead of the biome's single getTopMaterial); plain end stone and
-                        // end-stone dust are excluded, since both are this carve's own "nothing special"
-                        // filler (endstone_dust is in the TERRAIN tag via wover:surfaces/end/stones, so
-                        // sampling it back would poison the rim material to dust).
-                        if (state.is(CommonBlockTags.TERRAIN)
-                                && !state.is(Blocks.END_STONE)
-                                && !state.is(EndBlocks.ENDSTONE_DUST)) {
-                            lastSurfaceMaterial = state;
+      for (int x = 0; x < 16; x++) {
+         mut.setX(x);
+         int wx = x | sx;
+         double nx = wx * 0.1;
+         int x2 = wx - this.center.getX();
+
+         for (int z = 0; z < 16; z++) {
+            mut.setZ(z);
+            int wz = z | sz;
+            double nz = wz * 0.1;
+            int z2 = wz - this.center.getZ();
+            float clamp = this.getHeightClamp(world, 8, wx, wz);
+            if (!(clamp < 0.01)) {
+               double n = this.noise.eval(nx, nz) * 1.5 + 1.5;
+               double x3 = MHelper.sqr(x2 + this.noise.eval(nx, nz, 100.0) * 10.0);
+               double z3 = MHelper.sqr(z2 + this.noise.eval(nx, nz, -100.0) * 10.0);
+
+               for (int y = maxY; y >= minY; y--) {
+                  mut.setY((int)(y + n));
+                  double y2 = MHelper.sqr((y - this.center.getY()) * this.aspect);
+                  double r2 = this.radius * clamp;
+                  double r3 = r2 + 8.0;
+                  r2 *= r2;
+                  r3 = r3 * r3 + 100.0;
+                  double dist = x3 + y2 + z3;
+                  if (dist < r2) {
+                     BlockState state = chunk.getBlockState(mut);
+                     if (state.is(CommonBlockTags.TERRAIN) && !state.is(Blocks.END_STONE) && !state.is(EndBlocks.ENDSTONE_DUST)) {
+                        this.lastSurfaceMaterial = state;
+                     }
+
+                     if (state.is(CommonBlockTags.END_STONES) || state.isAir()) {
+                        state = mut.getY() < this.waterLevel ? WATER : CAVE_AIR;
+                        chunk.setBlockState(mut, state, false);
+                     }
+                  } else if (dist <= r3 && mut.getY() < this.center.getY()) {
+                     BlockState statex = chunk.getBlockState(mut);
+                     BlockPos worldPos = mut.offset(sx, 0, sz);
+                     if (!statex.isCollisionShapeFullBlock(world, worldPos) && !statex.isRedstoneConductor(world, worldPos)) {
+                        BlockState above3 = chunk.getBlockState(mut.above(3));
+                        BlockState stateAbove = chunk.getBlockState(mut.above());
+                        if (stateAbove.isAir() && above3.isAir()) {
+                           statex = this.shorePatch(world, worldPos.getX(), worldPos.getZ(), -0.55);
+                        } else if (stateAbove.isAir()) {
+                           statex = this.shorePatch(world, worldPos.getX(), worldPos.getZ(), 0.0);
+                        } else {
+                           statex = above3.getFluidState().isEmpty() ? ENDSTONE : EndBlocks.ENDSTONE_DUST.defaultBlockState();
                         }
-                        if (state.is(CommonBlockTags.END_STONES) || state.isAir()) {
-                            state = mut.getY() < waterLevel ? WATER : CAVE_AIR;
-                            chunk.setBlockState(mut, state, false);
+
+                        double edgeT = (dist - r2) / (r3 - r2);
+                        double placeChance = edgeT > 0.85 ? 0.2 : (edgeT > 0.6 ? 0.5 : 1.0);
+                        if (placeChance >= 1.0 || random.nextDouble() < placeChance) {
+                           chunk.setBlockState(mut, statex, false);
+                           this.fillDownToGround(chunk, mut, mut.getY() - 1);
+                           if (stateAbove.isAir() && random.nextDouble() < 1.0 - 0.75 * edgeT) {
+                              this.placeRimPlant(world, chunk, mut, worldPos, random);
+                           }
                         }
-                    } else if (dist <= r3 && mut.getY() < center.getY()) {
-                        BlockState state = chunk.getBlockState(mut);
-                        BlockPos worldPos = mut.offset(sx, 0, sz);
-                        if (!state.isCollisionShapeFullBlock(world, worldPos) && !state.isRedstoneConductor(
-                                world,
-                                worldPos
-                        )) {
-                            BlockState above3 = chunk.getBlockState(mut.above(3));
-                            final BlockState stateAbove = chunk.getBlockState(mut.above());
-                            if (stateAbove.isAir() && above3.isAir()) {
-                                // ~10% end stone (bias -0.55), patched via noise instead of random.
-                                state = shorePatch(world, worldPos.getX(), worldPos.getZ(), -0.55);
-                            } else if (stateAbove.isAir()) {
-                                // ~50% end stone (bias 0.0).
-                                state = shorePatch(world, worldPos.getX(), worldPos.getZ(), 0.0);
-                            } else {
-                                state = above3.getFluidState().isEmpty()
-                                        ? ENDSTONE
-                                        : EndBlocks.ENDSTONE_DUST.defaultBlockState();
-                            }
+                     }
+                  }
+               }
 
-                            // Taper the rim replacement toward the outer edge of the band so it
-                            // blends into the untouched terrain instead of forming a hard ring.
-                            double edgeT = (dist - r2) / (r3 - r2);
-                            double placeChance = edgeT > 0.85 ? 0.2 : edgeT > 0.6 ? 0.5 : 1.0;
-                            if (placeChance >= 1.0 || random.nextDouble() < placeChance) {
-                                chunk.setBlockState(mut, state, false);
-                                // Every placed rim block is filled down to solid ground - the outer
-                                // taper otherwise leaves single blocks floating over air.
-                                fillDownToGround(chunk, mut, mut.getY() - 1);
-                                // Vegetate the shore: dense right next to the water, thinning to
-                                // ~25% at the outer edge of the band.
-                                if (stateAbove.isAir() && random.nextDouble() < 1.0 - 0.75 * edgeT) {
-                                    placeRimPlant(world, chunk, mut, worldPos, random);
-                                }
-                            }
+               double rc = this.radius * clamp;
+               double ys = (this.waterLevel - 1 - n - this.center.getY()) * this.aspect;
+               double edgeSq = rc * rc - ys * ys;
+               if (edgeSq > 0.0) {
+                  double dOut = Math.sqrt(x3 + z3) - Math.sqrt(edgeSq);
+                  if (dOut <= 17.0) {
+                     this.groundColumn(world, chunk, mut, wx, wz, dOut);
+                  }
+               }
+            }
+         }
+      }
+
+      this.fixWater(world, chunk, mut, random, sx, sz);
+   }
+
+   private void groundColumn(WorldGenLevel world, ChunkAccess chunk, MutableBlockPos mut, int wx, int wz, double dOut) {
+      int surfaceY = this.waterLevel - 1;
+      mut.setY(surfaceY);
+      if (chunk.getBlockState(mut).getFluidState().isEmpty()) {
+         int groundTop = this.findGroundBelow(chunk, mut, surfaceY);
+         if (groundTop != -2147483647) {
+            if (groundTop < surfaceY) {
+               if (groundTop != Integer.MIN_VALUE) {
+                  double t = Math.min(1.0, dOut / 16.0);
+                  double minW = 1.0 - t * 0.9;
+                  double maxW = 1.0 - t * 0.7;
+                  double noise01 = this.noise.eval(wx * 0.1, wz * 0.1, 300.0) * 0.5 + 0.5;
+                  double waterWeight = minW + noise01 * (maxW - minW);
+                  int target = (int)Math.round(waterWeight * surfaceY + (1.0 - waterWeight) * groundTop);
+                  if (target > groundTop) {
+                     mut.setY(target);
+                     BlockState state = chunk.getBlockState(mut);
+                     if (state.getFluidState().isEmpty()) {
+                        if (state.isAir() || BlocksHelper.replaceableOrPlant(state)) {
+                           chunk.setBlockState(mut, this.shorePatch(world, wx, wz, -0.55), false);
+                           this.fillDownToGround(chunk, mut, target - 1);
                         }
-                    }
-                }
-
-                // ---- Grounding (see groundColumn) -------------------------------------------
-                // edgeSq > 0 exactly when this lake has surface-level water somewhere at this
-                // column's distorted radius; the same clamp/noise values as the carve keep the
-                // estimate consistent with what was actually placed above.
-                double rc = radius * clamp;
-                double ys = (waterLevel - 1 - n - center.getY()) * aspect;
-                double edgeSq = rc * rc - ys * ys;
-                if (edgeSq > 0) {
-                    double dOut = Math.sqrt(x3 + z3) - Math.sqrt(edgeSq);
-                    if (dOut <= SHORE_WIDTH + 1) {
-                        groundColumn(world, chunk, mut, wx, wz, dOut);
-                    }
-                }
+                     }
+                  }
+               }
             }
-        }
-        fixWater(world, chunk, mut, random, sx, sz);
-    }
-
-    /** Marker for "no solid ground found within {@link #GROUND_SEARCH_DEPTH}". */
-    private static final int NO_GROUND = Integer.MIN_VALUE;
-    /** Marker for "fluid found before solid ground" (a lower lake this column reaches over). */
-    private static final int FLUID_BELOW = Integer.MIN_VALUE + 1;
-
-    /**
-     * Grounds one column of the lake so the water body never hovers above lower terrain like a
-     * stone bowl (previously, water carved into open air was just given a one-block end-stone
-     * shell by {@link #fixWater}).
-     * <p>
-     * Columns under the water close the gap between the lowest water block and the real terrain -
-     * but only if that gap is at most {@link #BRIDGE_DEPTH} deep. Deeper cavities are never filled
-     * through: caves (generated in RAW_GENERATION, before the LAKES step) keep their volume and
-     * the void stays open; the lake merely seals itself with a {@link #SHELL_DEPTH} thick shell
-     * whose underside follows the bowl shape of the water body instead of ending in a flat plane.
-     * <p>
-     * Columns beside the water become the bank: over a {@link #SHORE_WIDTH}-wide band the shore top is
-     * a blend of the water surface and the real ground - flush with the water at the edge (no waterfall)
-     * and sloping down to meet the surrounding terrain at the outer ring (see the interpolation in this
-     * method). Columns whose terrain already reaches that height (the normal sunken-lake case) are left
-     * untouched.
-     */
-    private void groundColumn(WorldGenLevel world, ChunkAccess chunk, MutableBlockPos mut, int wx, int wz, double dOut) {
-        final int surfaceY = waterLevel - 1;
-        mut.setY(surfaceY);
-        if (!chunk.getBlockState(mut).getFluidState().isEmpty()) {
-            // Under the water: walk down to the lowest water block, then close the gap below it.
-            int bottom = surfaceY;
-            while (bottom - 1 > chunk.getMinBuildHeight()) {
-                mut.setY(bottom - 1);
-                if (chunk.getBlockState(mut).getFluidState().isEmpty()) break;
-                bottom--;
+         }
+      } else {
+         int bottom;
+         for (bottom = surfaceY; bottom - 1 > chunk.getMinBuildHeight(); bottom--) {
+            mut.setY(bottom - 1);
+            if (chunk.getBlockState(mut).getFluidState().isEmpty()) {
+               break;
             }
-            fillBelow(chunk, mut, bottom - 1);
-            return;
-        }
+         }
 
-        // The bank: how far down is the real surrounding terrain?
-        final int groundTop = findGroundBelow(chunk, mut, surfaceY);
-        if (groundTop == FLUID_BELOW) return; // a lower lake this reaches over - its own bank handles it
-        if (groundTop >= surfaceY) return;    // terrain already at/above the water - nothing to slope down
-        if (groundTop == NO_GROUND) {
-            // No terrain within reach (deep cliff/void): place nothing. The placement-time corner gate
-            // rejects lakes hanging over drops, so this is rare; where it still happens a floating
-            // shore block would look worse than simply ending the shore.
-            return;
-        }
+         this.fillBelow(chunk, mut, bottom - 1);
+      }
+   }
 
-        // Ring interpolation: the shore top blends from the water surface at the waterline (dOut 0,
-        // weight fixed 1.0) to almost the real ground at the outer edge, so the bank slopes down to meet
-        // the surrounding terrain instead of standing as a wall or floating over lower ground. The min
-        // and max water-weight bounds interpolate independently (1.0 -> 0.1 and 1.0 -> 0.3) and a noise
-        // field picks the weight within them. Only fills where the terrain is below the target; existing
-        // higher terrain is left untouched.
-        final double t = Math.min(1.0, dOut / SHORE_WIDTH);
-        final double minW = 1.0 - t * (1.0 - OUTER_WATER_WEIGHT_MIN);
-        final double maxW = 1.0 - t * (1.0 - OUTER_WATER_WEIGHT_MAX);
-        final double noise01 = noise.eval(wx * 0.1, wz * 0.1, 300) * 0.5 + 0.5;
-        final double waterWeight = minW + noise01 * (maxW - minW);
-        final int target = (int) Math.round(waterWeight * surfaceY + (1.0 - waterWeight) * groundTop);
-        if (target <= groundTop) return; // outer ring already meets the ground
+   private void fillDownToGround(ChunkAccess chunk, MutableBlockPos mut, int from) {
+      int origY = mut.getY();
+      int groundY = Integer.MIN_VALUE;
+      int floor = Math.max(from - 4, chunk.getMinBuildHeight());
 
-        mut.setY(target);
-        final BlockState state = chunk.getBlockState(mut);
-        if (!state.getFluidState().isEmpty()) return;
-        if (!state.isAir() && !BlocksHelper.replaceableOrPlant(state)) return; // terrain reaches the target
-        chunk.setBlockState(mut, shorePatch(world, wx, wz, -0.55), false);
-        // Fill the shore solidly down to the real ground with end stone so it never floats.
-        fillDownToGround(chunk, mut, target - 1);
-    }
-
-    /** Maximum air gap the shore/rim downfill will close; deeper gaps are left untouched. */
-    private static final int MAX_AIR_FILL = 4;
-
-    /**
-     * Fills end stone downward from {@code from} through air/replaceable blocks - but only when solid
-     * ground lies within {@link #MAX_AIR_FILL} blocks (deeper gaps are left alone; the placement-time
-     * corner gate keeps lakes off steep drops, so long support pillars are neither needed nor wanted).
-     * The terrain block the fill lands on is replaced with end stone too, so the column never sits on
-     * grass/moss. Restores {@code mut}'s Y before returning.
-     */
-    private void fillDownToGround(ChunkAccess chunk, MutableBlockPos mut, int from) {
-        final int origY = mut.getY();
-        // Measure the gap first: find solid ground within MAX_AIR_FILL blocks.
-        int groundY = Integer.MIN_VALUE;
-        final int floor = Math.max(from - MAX_AIR_FILL, chunk.getMinBuildHeight());
-        for (int y = from; y >= floor; y--) {
-            mut.setY(y);
-            final BlockState state = chunk.getBlockState(mut);
-            if (!state.getFluidState().isEmpty()) {
-                mut.setY(origY);
-                return; // never fill toward water
-            }
-            if (!state.isAir() && !BlocksHelper.replaceableOrPlant(state)) {
-                groundY = y;
-                break;
-            }
-        }
-        if (groundY == Integer.MIN_VALUE) {
+      for (int y = from; y >= floor; y--) {
+         mut.setY(y);
+         BlockState state = chunk.getBlockState(mut);
+         if (!state.getFluidState().isEmpty()) {
             mut.setY(origY);
-            return; // more than MAX_AIR_FILL blocks of air below - do not fill
-        }
-        for (int y = from; y >= groundY; y--) {
+            return;
+         }
+
+         if (!state.isAir() && !BlocksHelper.replaceableOrPlant(state)) {
+            groundY = y;
+            break;
+         }
+      }
+
+      if (groundY == Integer.MIN_VALUE) {
+         mut.setY(origY);
+      } else {
+         for (int y = from; y >= groundY; y--) {
             mut.setY(y);
             chunk.setBlockState(mut, ENDSTONE, false);
-        }
-        mut.setY(origY);
-    }
+         }
 
-    /**
-     * Scans down from {@code from} (inclusive) for at most {@link #GROUND_SEARCH_DEPTH} blocks.
-     * Returns the y of the first solid block, {@link #FLUID_BELOW} if a fluid comes first, or
-     * {@link #NO_GROUND} if there is neither.
-     */
-    private int findGroundBelow(ChunkAccess chunk, MutableBlockPos mut, int from) {
-        final int floor = Math.max(from - GROUND_SEARCH_DEPTH, chunk.getMinBuildHeight());
-        for (int y = from; y > floor; y--) {
-            mut.setY(y);
-            final BlockState state = chunk.getBlockState(mut);
-            if (!state.getFluidState().isEmpty()) return FLUID_BELOW;
-            if (!state.isAir() && !BlocksHelper.replaceableOrPlant(state)) return y;
-        }
-        return NO_GROUND;
-    }
+         mut.setY(origY);
+      }
+   }
 
-    /**
-     * Closes the gap below {@code from}: filled completely with end stone when solid ground lies
-     * within {@link #BRIDGE_DEPTH} blocks, otherwise (cave, cliff or void below) only a
-     * {@link #SHELL_DEPTH} thick shell is placed and the cavity underneath is left untouched.
-     */
-    private void fillBelow(ChunkAccess chunk, MutableBlockPos mut, int from) {
-        final int groundTop = findGroundBelow(chunk, mut, from);
-        final int stopAt;
-        if (groundTop != NO_GROUND && groundTop != FLUID_BELOW && from - groundTop <= BRIDGE_DEPTH) {
-            stopAt = groundTop;
-        } else {
-            stopAt = from - SHELL_DEPTH;
-        }
-        for (int y = from; y > stopAt; y--) {
-            mut.setY(y);
-            final BlockState state = chunk.getBlockState(mut);
-            if (!state.getFluidState().isEmpty()) break;
-            if (!state.isAir() && !BlocksHelper.replaceableOrPlant(state)) break;
-            chunk.setBlockState(mut, ENDSTONE, false);
-        }
-    }
+   private int findGroundBelow(ChunkAccess chunk, MutableBlockPos mut, int from) {
+      int floor = Math.max(from - 32, chunk.getMinBuildHeight());
 
-    /**
-     * Places one shore plant on top of the just-placed rim block at {@code surface}. Tries the
-     * {@link #rimPlants()} in a random order and uses the first that can survive on the rim block, so
-     * soil-only plants land on mossy shores while the attached fur/wings cover bare end stone/dust.
-     *
-     * @param surface      the rim block position in chunk-local X/Z (world Y)
-     * @param surfaceWorld the same block in world coordinates, for {@code canSurvive} lookups
-     */
-    private void placeRimPlant(
-            WorldGenLevel world,
-            ChunkAccess chunk,
-            MutableBlockPos surface,
-            BlockPos surfaceWorld,
-            RandomSource random
-    ) {
-        final BlockState[] plants = rimPlants();
-        final BlockPos plantLocal = surface.above();
-        final BlockPos plantWorld = surfaceWorld.above();
-        final int start = random.nextInt(plants.length);
-        for (int i = 0; i < plants.length; i++) {
-            final BlockState plant = plants[(start + i) % plants.length];
-            if (plant.canSurvive(world, plantWorld)) {
-                chunk.setBlockState(plantLocal, plant, false);
-                return;
-            }
-        }
-    }
+      for (int y = from; y > floor; y--) {
+         mut.setY(y);
+         BlockState state = chunk.getBlockState(mut);
+         if (!state.getFluidState().isEmpty()) {
+            return -2147483647;
+         }
 
-    private void fixWater(
-            WorldGenLevel world,
-            ChunkAccess chunk,
-            MutableBlockPos mut,
-            RandomSource random,
-            int sx,
-            int sz
-    ) {
-        int minY = carveMinY();
-        int maxY = this.boundingBox.maxY();
-        for (int x = 0; x < 16; x++) {
-            mut.setX(x);
-            for (int z = 0; z < 16; z++) {
-                mut.setZ(z);
-                for (int y = minY; y <= maxY; y++) {
-                    mut.setY(y);
-                    FluidState state = chunk.getFluidState(mut);
-                    if (!state.isEmpty()) {
-                        mut.setY(y - 1);
-                        if (chunk.getBlockState(mut).isAir()) {
-                            mut.setY(y + 1);
+         if (!state.isAir() && !BlocksHelper.replaceableOrPlant(state)) {
+            return y;
+         }
+      }
 
-                            BlockState bState = chunk.getBlockState(mut);
-                            if (bState.isAir()) {
-                                bState = shorePatch(world, x | sx, z | sz, 0.0);
-                            } else {
-                                bState = bState.getFluidState().isEmpty()
-                                        ? ENDSTONE
-                                        : EndBlocks.ENDSTONE_DUST.defaultBlockState();
-                            }
+      return Integer.MIN_VALUE;
+   }
 
-                            mut.setY(y);
+   private void fillBelow(ChunkAccess chunk, MutableBlockPos mut, int from) {
+      int groundTop = this.findGroundBelow(chunk, mut, from);
+      int stopAt;
+      if (groundTop != Integer.MIN_VALUE && groundTop != -2147483647 && from - groundTop <= 8) {
+         stopAt = groundTop;
+      } else {
+         stopAt = from - 4;
+      }
 
-                            makeEndstonePillar(chunk, mut, bState);
-                        } else if (x > 1 && x < 15 && z > 1 && z < 15) {
-                            mut.setY(y);
-                            for (Direction dir : BlocksHelper.HORIZONTAL) {
-                                BlockPos wPos = mut.offset(dir.getStepX(), 0, dir.getStepZ());
-                                if (chunk.getBlockState(wPos).isAir()) {
-                                    mut.setY(y + 1);
-                                    BlockState bState = chunk.getBlockState(mut);
-                                    if (bState.isAir()) {
-                                        bState = shorePatch(world, x | sx, z | sz, 0.0);
-                                    } else {
-                                        bState = bState.getFluidState().isEmpty()
-                                                ? ENDSTONE
-                                                : EndBlocks.ENDSTONE_DUST.defaultBlockState();
-                                    }
-                                    mut.setY(y);
-                                    makeEndstonePillar(chunk, mut, bState);
-                                    break;
-                                }
-                            }
-                        } else if (chunk.getBlockState(mut.move(Direction.UP)).isAir()) {
-                            chunk.markPosForPostprocessing(mut.move(Direction.DOWN).immutable());
+      for (int y = from; y > stopAt; y--) {
+         mut.setY(y);
+         BlockState state = chunk.getBlockState(mut);
+         if (!state.getFluidState().isEmpty() || !state.isAir() && !BlocksHelper.replaceableOrPlant(state)) {
+            break;
+         }
+
+         chunk.setBlockState(mut, ENDSTONE, false);
+      }
+   }
+
+   private void placeRimPlant(WorldGenLevel world, ChunkAccess chunk, MutableBlockPos surface, BlockPos surfaceWorld, RandomSource random) {
+      BlockState[] plants = rimPlants();
+      BlockPos plantLocal = surface.above();
+      BlockPos plantWorld = surfaceWorld.above();
+      int start = random.nextInt(plants.length);
+
+      for (int i = 0; i < plants.length; i++) {
+         BlockState plant = plants[(start + i) % plants.length];
+         if (plant.canSurvive(world, plantWorld)) {
+            chunk.setBlockState(plantLocal, plant, false);
+            return;
+         }
+      }
+   }
+
+   private void fixWater(WorldGenLevel world, ChunkAccess chunk, MutableBlockPos mut, RandomSource random, int sx, int sz) {
+      int minY = this.carveMinY();
+      int maxY = this.boundingBox.maxY();
+
+      for (int x = 0; x < 16; x++) {
+         mut.setX(x);
+
+         for (int z = 0; z < 16; z++) {
+            mut.setZ(z);
+
+            for (int y = minY; y <= maxY; y++) {
+               mut.setY(y);
+               FluidState state = chunk.getFluidState(mut);
+               if (!state.isEmpty()) {
+                  mut.setY(y - 1);
+                  if (chunk.getBlockState(mut).isAir()) {
+                     mut.setY(y + 1);
+                     BlockState bState = chunk.getBlockState(mut);
+                     if (bState.isAir()) {
+                        bState = this.shorePatch(world, x | sx, z | sz, 0.0);
+                     } else {
+                        bState = bState.getFluidState().isEmpty() ? ENDSTONE : EndBlocks.ENDSTONE_DUST.defaultBlockState();
+                     }
+
+                     mut.setY(y);
+                     this.makeEndstonePillar(chunk, mut, bState);
+                  } else if (x > 1 && x < 15 && z > 1 && z < 15) {
+                     mut.setY(y);
+
+                     for (Direction dir : BlocksHelper.HORIZONTAL) {
+                        BlockPos wPos = mut.offset(dir.getStepX(), 0, dir.getStepZ());
+                        if (chunk.getBlockState(wPos).isAir()) {
+                           mut.setY(y + 1);
+                           BlockState bState = chunk.getBlockState(mut);
+                           if (bState.isAir()) {
+                              bState = this.shorePatch(world, x | sx, z | sz, 0.0);
+                           } else {
+                              bState = bState.getFluidState().isEmpty() ? ENDSTONE : EndBlocks.ENDSTONE_DUST.defaultBlockState();
+                           }
+
+                           mut.setY(y);
+                           this.makeEndstonePillar(chunk, mut, bState);
+                           break;
                         }
-                    } else if (chunk.getBlockState(mut).isRandomlyTicking()) {
-                        chunk.markPosForPostprocessing(mut.immutable());
-                    }
-                }
+                     }
+                  } else if (chunk.getBlockState(mut.move(Direction.UP)).isAir()) {
+                     chunk.markPosForPostprocessing(mut.move(Direction.DOWN).immutable());
+                  }
+               } else if (chunk.getBlockState(mut).isRandomlyTicking()) {
+                  chunk.markPosForPostprocessing(mut.immutable());
+               }
             }
-        }
-    }
+         }
+      }
+   }
 
-    private void makeEndstonePillar(ChunkAccess chunk, MutableBlockPos mut, BlockState terrain) {
-        chunk.setBlockState(mut, terrain, false);
-        mut.setY(mut.getY() - 1);
-        while (!chunk.getFluidState(mut).isEmpty()) {
-            chunk.setBlockState(mut, ENDSTONE, false);
-            mut.setY(mut.getY() - 1);
-        }
-    }
+   private void makeEndstonePillar(ChunkAccess chunk, MutableBlockPos mut, BlockState terrain) {
+      chunk.setBlockState(mut, terrain, false);
+      mut.setY(mut.getY() - 1);
 
-    private int getHeight(WorldGenLevel world, BlockPos pos) {
-        int p = ((pos.getX() & 2047) << 11) | (pos.getZ() & 2047);
-        int h = heightmap.getOrDefault(p, Byte.MIN_VALUE);
-        if (h > Byte.MIN_VALUE) {
-            return h;
-        }
+      while (!chunk.getFluidState(mut).isEmpty()) {
+         chunk.setBlockState(mut, ENDSTONE, false);
+         mut.setY(mut.getY() - 1);
+      }
+   }
 
-        if (!world.getBiome(pos).is(biomeID)) {
-            heightmap.put(p, (byte) 0);
-            return 0;
-        }
+   private int getHeight(WorldGenLevel world, BlockPos pos) {
+      int p = (pos.getX() & 2047) << 11 | pos.getZ() & 2047;
+      int h = this.heightmap.getOrDefault(p, (byte)-128);
+      if (h > -128) {
+         return h;
+      } else if (!GenerationArea.getBiome(world, pos).is(this.biomeID)) {
+         this.heightmap.put(p, (byte)0);
+         return 0;
+      } else {
+         h = worldgenSurfaceHeight(world, pos.getX(), pos.getZ());
+         h = Mth.abs(h - this.center.getY());
+         h = h < 8 ? 1 : 0;
+         this.heightmap.put(p, (byte)h);
+         return h;
+      }
+   }
 
-        h = world.getHeight(Types.WORLD_SURFACE_WG, pos.getX(), pos.getZ());
-        h = Mth.abs(h - center.getY());
-        h = h < 8 ? 1 : 0;
+   private float getHeightClamp(WorldGenLevel world, int radius, int posX, int posZ) {
+      MutableBlockPos mut = new MutableBlockPos();
+      int r2 = radius * radius;
+      float height = 0.0F;
+      float max = 0.0F;
 
-        heightmap.put(p, (byte) h);
-        return h;
-    }
+      for (int x = -radius; x <= radius; x++) {
+         mut.setX(posX + x);
+         int x2 = x * x;
 
-    private float getHeightClamp(WorldGenLevel world, int radius, int posX, int posZ) {
-        MutableBlockPos mut = new MutableBlockPos();
-        int r2 = radius * radius;
-        float height = 0;
-        float max = 0;
-        for (int x = -radius; x <= radius; x++) {
-            mut.setX(posX + x);
-            int x2 = x * x;
-            for (int z = -radius; z <= radius; z++) {
-                mut.setZ(posZ + z);
-                int z2 = z * z;
-                if (x2 + z2 < r2) {
-                    float mult = 1 - (float) Math.sqrt(x2 + z2) / radius;
-                    max += mult;
-                    height += getHeight(world, mut) * mult;
-                }
+         for (int z = -radius; z <= radius; z++) {
+            mut.setZ(posZ + z);
+            int z2 = z * z;
+            if (x2 + z2 < r2) {
+               float mult = 1.0F - (float)Math.sqrt(x2 + z2) / radius;
+               max += mult;
+               height += this.getHeight(world, mut) * mult;
             }
-        }
-        height /= max;
-        return Mth.clamp(height, 0, 1);
-    }
+         }
+      }
 
-    /**
-     * The vertical range of the bowl carve (and of {@link #fixWater}); this was the box's Y range
-     * before the grounding pass extended the box further down for its fills.
-     */
-    private int carveMinY() {
-        return MHelper.floor(center.getY() - depth - 8);
-    }
+      height /= max;
+      return Mth.clamp(height, 0.0F, 1.0F);
+   }
 
-    private void makeBoundingBox() {
-        // radius + 8 covers the rim band; the grounding shore reaches SHORE_WIDTH farther out, plus
-        // ~10 blocks of horizontal noise distortion of the shape.
-        final int margin = 8 + SHORE_WIDTH + 10;
-        int minX = MHelper.floor(center.getX() - radius - margin);
-        // Deepest possible grounding write: a full bridge fill just below the carve.
-        int minY = carveMinY() - BRIDGE_DEPTH - SHELL_DEPTH;
-        int minZ = MHelper.floor(center.getZ() - radius - margin);
-        int maxX = MHelper.floor(center.getX() + radius + margin);
-        int maxY = MHelper.floor(center.getY() + depth);
-        int maxZ = MHelper.floor(center.getZ() + radius + margin);
-        this.boundingBox = new BoundingBox(minX, minY, minZ, maxX, maxY, maxZ);
-    }
+   private int carveMinY() {
+      return MHelper.floor(this.center.getY() - this.depth - 8.0F);
+   }
+
+   private void makeBoundingBox() {
+      int margin = 34;
+      int minX = MHelper.floor(this.center.getX() - this.radius - 34.0F);
+      int minY = this.carveMinY() - 8 - 4;
+      int minZ = MHelper.floor(this.center.getZ() - this.radius - 34.0F);
+      int maxX = MHelper.floor(this.center.getX() + this.radius + 34.0F);
+      int maxY = MHelper.floor(this.center.getY() + this.depth);
+      int maxZ = MHelper.floor(this.center.getZ() + this.radius + 34.0F);
+      this.boundingBox = new BoundingBox(minX, minY, minZ, maxX, maxY, maxZ);
+   }
 }

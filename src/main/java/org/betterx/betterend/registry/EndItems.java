@@ -10,7 +10,6 @@ import org.betterx.bclib.items.tool.BaseSwordItem;
 import org.betterx.bclib.registry.BaseRegistry;
 import org.betterx.bclib.registry.ItemRegistry;
 import org.betterx.betterend.BetterEnd;
-import org.betterx.betterend.config.Configs;
 import org.betterx.betterend.item.*;
 import org.betterx.betterend.item.material.EndArmorMaterial;
 import org.betterx.betterend.item.material.EndToolMaterial;
@@ -32,7 +31,7 @@ import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 
 public class EndItems {
-    private static final ItemRegistry REGISTRY = new ItemRegistry(Configs.ITEM_CONFIG);
+    private static final ItemRegistry REGISTRY = new ItemRegistry();
 
     // Materials //
     public final static Item ENDER_DUST = registerEndItem("ender_dust");
@@ -330,11 +329,8 @@ public class EndItems {
     }
 
     public static TieredItem registerEndTool(String name, TieredItem item) {
-        if (!Configs.ITEM_CONFIG.getBoolean("tools", name, true)) {
-            return item;
-        }
-        return (TieredItem) getItemRegistry().registerTool(BetterEnd.makeID(name), item);
-    }
+      return (TieredItem)getItemRegistry().registerTool(BetterEnd.makeID(name), item);
+   }
 
     public static Item registerEndEgg(String name, EntityType<? extends Mob> type, int background, int dots) {
         return getItemRegistry().registerEgg(BetterEnd.makeID(name), type, background, dots);

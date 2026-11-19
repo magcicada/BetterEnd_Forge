@@ -21,8 +21,10 @@ import org.betterx.betterend.util.BonemealPlants;
 import org.betterx.betterend.util.LootTableUtil;
 import org.betterx.betterend.world.generator.EndLandBiomeDecider;
 import org.betterx.betterend.world.generator.GeneratorOptions;
+import org.betterx.betterend.world.generator.VoidRing;
 import org.betterx.worlds.together.util.Logger;
 import org.betterx.worlds.together.world.WorldConfig;
+import org.betterx.worlds.together.world.event.WorldEvents;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -148,6 +150,7 @@ public class BetterEnd {
         }
         EndEntities.registerSpawnEggs();
         CreativeTabs.register();
+        WorldEvents.ADAPT_WORLD_PRESET.on(VoidRing::adaptWorldPreset);
     }
 
     private void registerFeatures(RegisterEvent event) {

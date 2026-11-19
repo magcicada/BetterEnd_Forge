@@ -86,7 +86,7 @@ public class EndPortals {
     }
 
     public static int getColor(int state) {
-        return portals[state].color;
+        return state < 0 || state >= portals.length ? portals[0].color : portals[state].color;
     }
 
     public static boolean isAvailableItem(ResourceLocation item) {

@@ -1,13 +1,6 @@
 package org.betterx.betterend.blocks;
 
-import org.betterx.bclib.behaviours.interfaces.BehaviourWaterPlantSapling;
-import org.betterx.bclib.blocks.UnderwaterPlantWithAgeBlock;
-import org.betterx.bclib.interfaces.SurvivesOnSpecialGround;
-import org.betterx.bclib.util.BlocksHelper;
-import org.betterx.bclib.util.MHelper;
-import org.betterx.betterend.interfaces.survives.SurvivesOnSulphuricRock;
-import org.betterx.betterend.registry.EndBlocks;
-
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.BlockPos.MutableBlockPos;
 import net.minecraft.network.chat.Component;
@@ -18,80 +11,63 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-
-import java.util.List;
+import org.betterx.bclib.behaviours.interfaces.BehaviourWaterPlantSapling;
+import org.betterx.bclib.blocks.UnderwaterPlantWithAgeBlock;
+import org.betterx.bclib.interfaces.SurvivesOnSpecialGround;
+import org.betterx.bclib.util.MHelper;
+import org.betterx.betterend.interfaces.survives.SurvivesOnSulphuricRock;
+import org.betterx.betterend.registry.EndBlocks;
+import org.betterx.betterend.util.GrowthPlacer;
 import org.jetbrains.annotations.Nullable;
 
 public class HydraluxSaplingBlock extends UnderwaterPlantWithAgeBlock implements BehaviourWaterPlantSapling, SurvivesOnSulphuricRock {
+   @Override
+   public void grow(WorldGenLevel world, RandomSource random, BlockPos pos) {
+      int h = MHelper.randRange(4, 8, random);
+      MutableBlockPos mut = new MutableBlockPos().set(pos);
 
-    @Override
-    public void grow(WorldGenLevel world, RandomSource random, BlockPos pos) {
-        int h = MHelper.randRange(4, 8, random);
-        MutableBlockPos mut = new MutableBlockPos().set(pos);
+      for (int i = 1; i < h; i++) {
+         mut.setY(pos.getY() + i);
+         if (!world.getBlockState(mut).is(Blocks.WATER)) {
+            return;
+         }
+      }
 
-        for (int i = 1; i < h; i++) {
-            mut.setY(pos.getY() + i);
-            if (!world.getBlockState(mut).is(Blocks.WATER)) {
-                return;
-            }
-        }
+      mut.setY(pos.getY());
+      BlockState state = EndBlocks.HYDRALUX.defaultBlockState();
+      GrowthPlacer placer = new GrowthPlacer(world);
+      placer.set(pos, (BlockState)state.setValue(EndBlockProperties.HYDRALUX_SHAPE, EndBlockProperties.HydraluxShape.ROOTS));
 
-        mut.setY(pos.getY());
-        BlockState state = EndBlocks.HYDRALUX.defaultBlockState();
-        BlocksHelper.setWithoutUpdate(
-                world,
-                pos,
-                state.setValue(EndBlockProperties.HYDRALUX_SHAPE, EndBlockProperties.HydraluxShape.ROOTS)
-        );
-        for (int i = 1; i < h - 2; i++) {
-            mut.setY(pos.getY() + i);
-            BlocksHelper.setWithoutUpdate(
-                    world,
-                    mut,
-                    state.setValue(EndBlockProperties.HYDRALUX_SHAPE, EndBlockProperties.HydraluxShape.VINE)
-            );
-        }
+      for (int ix = 1; ix < h - 2; ix++) {
+         mut.setY(pos.getY() + ix);
+         placer.set(mut, (BlockState)state.setValue(EndBlockProperties.HYDRALUX_SHAPE, EndBlockProperties.HydraluxShape.VINE));
+      }
 
-        mut.setY(mut.getY() + 1);
-        boolean big = random.nextBoolean();
-        BlocksHelper.setWithoutUpdate(
-                world,
-                mut,
-                state.setValue(
-                        EndBlockProperties.HYDRALUX_SHAPE,
-                        big
-                                ? EndBlockProperties.HydraluxShape.FLOWER_BIG_BOTTOM
-                                : EndBlockProperties.HydraluxShape.FLOWER_SMALL_BOTTOM
-                )
-        );
+      mut.setY(mut.getY() + 1);
+      boolean big = random.nextBoolean();
+      placer.set(
+         mut,
+         (BlockState)state.setValue(
+            EndBlockProperties.HYDRALUX_SHAPE, big ? EndBlockProperties.HydraluxShape.FLOWER_BIG_BOTTOM : EndBlockProperties.HydraluxShape.FLOWER_SMALL_BOTTOM
+         )
+      );
+      mut.setY(mut.getY() + 1);
+      placer.set(
+         mut,
+         (BlockState)state.setValue(
+            EndBlockProperties.HYDRALUX_SHAPE, big ? EndBlockProperties.HydraluxShape.FLOWER_BIG_TOP : EndBlockProperties.HydraluxShape.FLOWER_SMALL_TOP
+         )
+      );
+      placer.notifyNeighbours();
+   }
 
-        mut.setY(mut.getY() + 1);
-        BlocksHelper.setWithoutUpdate(
-                world,
-                mut,
-                state.setValue(
-                        EndBlockProperties.HYDRALUX_SHAPE,
-                        big
-                                ? EndBlockProperties.HydraluxShape.FLOWER_BIG_TOP
-                                : EndBlockProperties.HydraluxShape.FLOWER_SMALL_TOP
-                )
-        );
-    }
+   @Override
+   public boolean isTerrain(BlockState state) {
+      return SurvivesOnSulphuricRock.super.isTerrain(state);
+   }
 
-    @Override
-    public boolean isTerrain(BlockState state) {
-        return SurvivesOnSulphuricRock.super.isTerrain(state);
-    }
-
-
-    @Override
-    public void appendHoverText(
-            ItemStack itemStack,
-            @Nullable BlockGetter blockGetter,
-            List<Component> list,
-            TooltipFlag tooltipFlag
-    ) {
-        super.appendHoverText(itemStack, blockGetter, list, tooltipFlag);
-        SurvivesOnSpecialGround.appendHoverTextUnderwaterInDepth(list, 5);
-    }
+   public void appendHoverText(ItemStack itemStack, @Nullable BlockGetter blockGetter, List<Component> list, TooltipFlag tooltipFlag) {
+      super.appendHoverText(itemStack, blockGetter, list, tooltipFlag);
+      SurvivesOnSpecialGround.appendHoverTextUnderwaterInDepth(list, 5);
+   }
 }

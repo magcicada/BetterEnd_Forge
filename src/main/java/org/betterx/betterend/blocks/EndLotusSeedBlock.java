@@ -1,139 +1,144 @@
 package org.betterx.betterend.blocks;
 
-import org.betterx.bclib.behaviours.interfaces.BehaviourWaterPlantSeed;
-import org.betterx.bclib.blocks.BlockProperties.TripleShape;
-import org.betterx.bclib.blocks.UnderwaterPlantWithAgeBlock;
-import org.betterx.bclib.util.BlocksHelper;
-import org.betterx.betterend.registry.EndBlocks;
-import org.betterx.worlds.together.tag.v3.CommonBlockTags;
-
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.BlockPos.MutableBlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.BlockPos.MutableBlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluids;
+import org.betterx.bclib.behaviours.interfaces.BehaviourWaterPlantSeed;
+import org.betterx.bclib.blocks.UnderwaterPlantWithAgeBlock;
+import org.betterx.bclib.blocks.BlockProperties.TripleShape;
+import org.betterx.bclib.util.BlocksHelper;
+import org.betterx.betterend.registry.EndBlocks;
+import org.betterx.betterend.util.GrowthPlacer;
+import org.betterx.worlds.together.tag.v3.CommonBlockTags;
 
 public class EndLotusSeedBlock extends UnderwaterPlantWithAgeBlock implements BehaviourWaterPlantSeed {
-    @Override
-    public void grow(WorldGenLevel world, RandomSource random, BlockPos pos) {
-        if (canGrow(world, pos)) {
-            BlockState startLeaf = EndBlocks.END_LOTUS_STEM.defaultBlockState().setValue(EndLotusStemBlock.LEAF, true);
-            BlockState roots = EndBlocks.END_LOTUS_STEM.defaultBlockState()
-                                                       .setValue(EndLotusStemBlock.SHAPE, TripleShape.BOTTOM)
-                                                       .setValue(EndLotusStemBlock.WATERLOGGED, true);
-            BlockState stem = EndBlocks.END_LOTUS_STEM.defaultBlockState();
-            BlockState flower = EndBlocks.END_LOTUS_FLOWER.defaultBlockState();
+   @Override
+   public void grow(WorldGenLevel world, RandomSource random, BlockPos pos) {
+      if (this.canGrow(world, pos)) {
+         GrowthPlacer placer = new GrowthPlacer(world);
+         BlockState startLeaf = (BlockState)EndBlocks.END_LOTUS_STEM.defaultBlockState().setValue(EndLotusStemBlock.LEAF, true);
+         BlockState roots = (BlockState)((BlockState)EndBlocks.END_LOTUS_STEM.defaultBlockState().setValue(EndLotusStemBlock.SHAPE, TripleShape.BOTTOM))
+            .setValue(EndLotusStemBlock.WATERLOGGED, true);
+         BlockState stem = EndBlocks.END_LOTUS_STEM.defaultBlockState();
+         BlockState flower = EndBlocks.END_LOTUS_FLOWER.defaultBlockState();
+         placer.set(pos, roots);
+         MutableBlockPos bpos = new MutableBlockPos().set(pos);
+         bpos.setY(bpos.getY() + 1);
 
-            BlocksHelper.setWithoutUpdate(world, pos, roots);
-            MutableBlockPos bpos = new MutableBlockPos().set(pos);
+         while (world.getFluidState(bpos).isSource()) {
+            placer.set(bpos, (BlockState)stem.setValue(EndLotusStemBlock.WATERLOGGED, true));
             bpos.setY(bpos.getY() + 1);
-            while (world.getFluidState(bpos).isSource()) {
-                BlocksHelper.setWithoutUpdate(world, bpos, stem.setValue(EndLotusStemBlock.WATERLOGGED, true));
-                bpos.setY(bpos.getY() + 1);
+         }
+
+         int height = random.nextBoolean() ? 0 : (random.nextBoolean() ? 1 : (random.nextBoolean() ? 1 : -1));
+         TripleShape shape = height == 0 ? TripleShape.TOP : TripleShape.MIDDLE;
+         Direction dir = BlocksHelper.randomHorizontal(random);
+         BlockPos leafCenter = bpos.immutable().relative(dir);
+         if (this.hasLeaf(world, leafCenter)) {
+            this.generateLeaf(placer, leafCenter);
+            placer.set(bpos, (BlockState)((BlockState)startLeaf.setValue(EndLotusStemBlock.SHAPE, shape)).setValue(EndLotusStemBlock.FACING, dir));
+         } else {
+            placer.set(bpos, (BlockState)stem.setValue(EndLotusStemBlock.SHAPE, shape));
+         }
+
+         bpos.setY(bpos.getY() + 1);
+
+         for (int i = 1; i <= height; i++) {
+            if (!world.isEmptyBlock(bpos)) {
+               bpos.setY(bpos.getY() - 1);
+               placer.set(bpos, flower);
+               bpos.setY(bpos.getY() - 1);
+               stem = world.getBlockState(bpos);
+               placer.set(bpos, (BlockState)stem.setValue(EndLotusStemBlock.SHAPE, TripleShape.TOP));
+               placer.notifyNeighbours();
+               return;
             }
 
-            int height = random.nextBoolean() ? 0 : random.nextBoolean() ? 1 : random.nextBoolean() ? 1 : -1;
-            TripleShape shape = (height == 0) ? TripleShape.TOP : TripleShape.MIDDLE;
-            Direction dir = BlocksHelper.randomHorizontal(random);
-            BlockPos leafCenter = bpos.immutable().relative(dir);
-            if (hasLeaf(world, leafCenter)) {
-                generateLeaf(world, leafCenter);
-                BlocksHelper.setWithoutUpdate(
-                        world,
-                        bpos,
-                        startLeaf.setValue(EndLotusStemBlock.SHAPE, shape).setValue(EndLotusStemBlock.FACING, dir)
-                );
-            } else {
-                BlocksHelper.setWithoutUpdate(world, bpos, stem.setValue(EndLotusStemBlock.SHAPE, shape));
-            }
-
+            placer.set(bpos, stem);
             bpos.setY(bpos.getY() + 1);
-            for (int i = 1; i <= height; i++) {
-                if (!world.isEmptyBlock(bpos)) {
-                    bpos.setY(bpos.getY() - 1);
-                    BlocksHelper.setWithoutUpdate(world, bpos, flower);
-                    bpos.setY(bpos.getY() - 1);
-                    stem = world.getBlockState(bpos);
-                    BlocksHelper.setWithoutUpdate(world, bpos, stem.setValue(EndLotusStemBlock.SHAPE, TripleShape.TOP));
-                    return;
-                }
-                BlocksHelper.setWithoutUpdate(world, bpos, stem);
-                bpos.setY(bpos.getY() + 1);
-            }
+         }
 
-            if (!world.isEmptyBlock(bpos) || height < 0) {
-                bpos.setY(bpos.getY() - 1);
-            }
-
-            BlocksHelper.setWithoutUpdate(world, bpos, flower);
+         if (!world.isEmptyBlock(bpos) || height < 0) {
             bpos.setY(bpos.getY() - 1);
-            stem = world.getBlockState(bpos);
-            if (!stem.is(EndBlocks.END_LOTUS_STEM)) {
-                stem = EndBlocks.END_LOTUS_STEM.defaultBlockState();
-                if (!world.getBlockState(bpos.north()).getFluidState().isEmpty()) {
-                    stem = stem.setValue(EndLotusStemBlock.WATERLOGGED, true);
-                }
+         }
+
+         placer.set(bpos, flower);
+         bpos.setY(bpos.getY() - 1);
+         stem = world.getBlockState(bpos);
+         if (!stem.is(EndBlocks.END_LOTUS_STEM)) {
+            stem = EndBlocks.END_LOTUS_STEM.defaultBlockState();
+            if (!world.getBlockState(bpos.north()).getFluidState().isEmpty()) {
+               stem = (BlockState)stem.setValue(EndLotusStemBlock.WATERLOGGED, true);
             }
+         }
 
-            if (world.getBlockState(bpos.relative(dir)).is(EndBlocks.END_LOTUS_LEAF)) {
-                stem = stem.setValue(EndLotusStemBlock.LEAF, true).setValue(EndLotusStemBlock.FACING, dir);
+         if (world.getBlockState(bpos.relative(dir)).is(EndBlocks.END_LOTUS_LEAF)) {
+            stem = (BlockState)((BlockState)stem.setValue(EndLotusStemBlock.LEAF, true)).setValue(EndLotusStemBlock.FACING, dir);
+         }
+
+         placer.set(bpos, (BlockState)stem.setValue(EndLotusStemBlock.SHAPE, TripleShape.TOP));
+         placer.notifyNeighbours();
+      }
+   }
+
+   private boolean canGrow(WorldGenLevel world, BlockPos pos) {
+      MutableBlockPos bpos = new MutableBlockPos();
+      bpos.set(pos);
+
+      while (world.getBlockState(bpos).getFluidState().getType().equals(Fluids.WATER.getSource())) {
+         bpos.setY(bpos.getY() + 1);
+      }
+
+      return world.isEmptyBlock(bpos) && world.isEmptyBlock(bpos.above());
+   }
+
+   private void generateLeaf(GrowthPlacer placer, BlockPos pos) {
+      MutableBlockPos p = new MutableBlockPos();
+      BlockState leaf = EndBlocks.END_LOTUS_LEAF.defaultBlockState();
+      placer.set(pos, (BlockState)leaf.setValue(EndLotusLeafBlock.SHAPE, TripleShape.BOTTOM));
+
+      for (Direction move : BlocksHelper.HORIZONTAL) {
+         placer.set(
+            p.set(pos).move(move),
+            (BlockState)((BlockState)leaf.setValue(EndLotusLeafBlock.HORIZONTAL_FACING, move)).setValue(EndLotusLeafBlock.SHAPE, TripleShape.MIDDLE)
+         );
+      }
+
+      for (int i = 0; i < 4; i++) {
+         Direction d1 = BlocksHelper.HORIZONTAL[i];
+         Direction d2 = BlocksHelper.HORIZONTAL[i + 1 & 3];
+         placer.set(
+            p.set(pos).move(d1).move(d2),
+            (BlockState)((BlockState)leaf.setValue(EndLotusLeafBlock.HORIZONTAL_FACING, d1)).setValue(EndLotusLeafBlock.SHAPE, TripleShape.TOP)
+         );
+      }
+   }
+
+   private boolean hasLeaf(WorldGenLevel world, BlockPos pos) {
+      MutableBlockPos p = new MutableBlockPos();
+      p.setY(pos.getY());
+      int count = 0;
+
+      for (int x = -1; x < 2; x++) {
+         p.setX(pos.getX() + x);
+
+         for (int z = -1; z < 2; z++) {
+            p.setZ(pos.getZ() + z);
+            if (world.isEmptyBlock(p) && !world.getFluidState(p.below()).isEmpty()) {
+               count++;
             }
+         }
+      }
 
-            BlocksHelper.setWithoutUpdate(world, bpos, stem.setValue(EndLotusStemBlock.SHAPE, TripleShape.TOP));
-        }
-    }
+      return count == 9;
+   }
 
-    private boolean canGrow(WorldGenLevel world, BlockPos pos) {
-        MutableBlockPos bpos = new MutableBlockPos();
-        bpos.set(pos);
-        while (world.getBlockState(bpos).getFluidState().getType().equals(Fluids.WATER.getSource())) {
-            bpos.setY(bpos.getY() + 1);
-        }
-        return world.isEmptyBlock(bpos) && world.isEmptyBlock(bpos.above());
-    }
-
-    private void generateLeaf(WorldGenLevel world, BlockPos pos) {
-        MutableBlockPos p = new MutableBlockPos();
-        BlockState leaf = EndBlocks.END_LOTUS_LEAF.defaultBlockState();
-        BlocksHelper.setWithoutUpdate(world, pos, leaf.setValue(EndLotusLeafBlock.SHAPE, TripleShape.BOTTOM));
-        for (Direction move : BlocksHelper.HORIZONTAL) {
-            BlocksHelper.setWithoutUpdate(
-                    world,
-                    p.set(pos).move(move),
-                    leaf.setValue(EndLotusLeafBlock.HORIZONTAL_FACING, move)
-                        .setValue(EndLotusLeafBlock.SHAPE, TripleShape.MIDDLE)
-            );
-        }
-        for (int i = 0; i < 4; i++) {
-            Direction d1 = BlocksHelper.HORIZONTAL[i];
-            Direction d2 = BlocksHelper.HORIZONTAL[(i + 1) & 3];
-            BlocksHelper.setWithoutUpdate(
-                    world,
-                    p.set(pos).move(d1).move(d2),
-                    leaf.setValue(EndLotusLeafBlock.HORIZONTAL_FACING, d1)
-                        .setValue(EndLotusLeafBlock.SHAPE, TripleShape.TOP)
-            );
-        }
-    }
-
-    private boolean hasLeaf(WorldGenLevel world, BlockPos pos) {
-        MutableBlockPos p = new MutableBlockPos();
-        p.setY(pos.getY());
-        int count = 0;
-        for (int x = -1; x < 2; x++) {
-            p.setX(pos.getX() + x);
-            for (int z = -1; z < 2; z++) {
-                p.setZ(pos.getZ() + z);
-                if (world.isEmptyBlock(p) && !world.getFluidState(p.below()).isEmpty()) count++;
-            }
-        }
-        return count == 9;
-    }
-
-    @Override
-    protected boolean isTerrain(BlockState state) {
-        return state.is(CommonBlockTags.END_STONES);
-    }
+   @Override
+   protected boolean isTerrain(BlockState state) {
+      return state.is(CommonBlockTags.END_STONES);
+   }
 }

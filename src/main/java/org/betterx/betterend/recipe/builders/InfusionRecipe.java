@@ -33,6 +33,7 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
 
 import java.util.Arrays;
 import java.util.function.Consumer;
@@ -300,37 +301,35 @@ public class InfusionRecipe implements Recipe<InfusionRitual>, UnknownReceipBook
 
     public static class Serializer implements RecipeSerializer<InfusionRecipe> {
         private Ingredient readIngredient(JsonObject obj, String key) {
-            if (obj.has(key)) {
-                JsonElement el = obj.get(key);
-                if (el.isJsonObject()) {
-                    JsonObject o = el.getAsJsonObject();
-                    //directly read as ingredient
-                    if (o.has("tag")) {
-                        final Ingredient res = ItemUtil.fromJsonIngredientWithNBT(o);
-                        if (res == null) return Ingredient.EMPTY;
-                        return res;
-                    } else {
-                        final Ingredient res = Ingredient.of(ItemUtil.fromJsonRecipeWithNBT(o));
-                        if (res == null) return Ingredient.EMPTY;
-                        return res;
-                    }
-                } else if (el.isJsonArray()) {
-                    //this is an Ingredient-Array, so read as such
-                    final Ingredient res = Ingredient.fromJson(el);
-                    if (res == null) return Ingredient.EMPTY;
-                    return res;
-                } else if (obj.isJsonPrimitive()) {
-                    String s = GsonHelper.getAsString(obj, key, "");
-                    ItemStack catalyst = ItemUtil.fromStackString(s);
-                    return (catalyst != null && !catalyst.isEmpty())
-                            ? Ingredient.of(catalyst.getItem())
-                            : Ingredient.EMPTY;
-                } else {
-                    throw new IllegalStateException("Invalid catalyst ingredient for " + key + ": " + el.toString());
-                }
+         if (obj.has(key)) {
+            JsonElement el = obj.get(key);
+            if (el.isJsonObject()) {
+               JsonObject o = el.getAsJsonObject();
+               if (o.has("tag")) {
+                  Ingredient res = ItemUtil.fromJsonIngredientWithNBT(o);
+                  return res == null ? Ingredient.EMPTY : res;
+               } else {
+                  ItemStack stack = ItemUtil.fromJsonRecipeWithNBT(o);
+                  if (stack == null) {
+                     throw new JsonSyntaxException("Unknown catalyst item for " + key + ": " + el);
+                  } else {
+                     return Ingredient.of(new ItemStack[]{stack});
+                  }
+               }
+            } else if (el.isJsonArray()) {
+               Ingredient res = Ingredient.fromJson(el);
+               return res == null ? Ingredient.EMPTY : res;
+            } else if (!el.isJsonPrimitive()) {
+               throw new IllegalStateException("Invalid catalyst ingredient for " + key + ": " + el.toString());
+            } else {
+               String s = GsonHelper.getAsString(obj, key, "");
+               ItemStack catalyst = ItemUtil.fromStackString(s);
+               return catalyst != null && !catalyst.isEmpty() ? Ingredient.of(new ItemLike[]{catalyst.getItem()}) : Ingredient.EMPTY;
             }
+         } else {
             return Ingredient.EMPTY;
-        }
+         }
+      }
 
         @Override
         public InfusionRecipe fromJson(ResourceLocation id, JsonObject json) {
